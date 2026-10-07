@@ -9,6 +9,7 @@ enum Settings {
         static let restThreshold = "restThresholdMinutes"
         static let remindEvery = "remindEveryMinutes"
         static let sound = "notificationSound"
+        static let warnBefore = "warnBeforeMinutes"
     }
 
     /// Built-in macOS alert sounds, found in /System/Library/Sounds.
@@ -24,6 +25,7 @@ enum Settings {
             Key.restThreshold: 5,
             Key.remindEvery: 10,
             Key.sound: defaultSound,
+            Key.warnBefore: 5,
         ])
     }
 
@@ -45,6 +47,12 @@ enum Settings {
         set { defaults.set(newValue, forKey: Key.remindEvery) }
     }
 
+    /// Minutes before the work limit at which the counter turns yellow. 0 disables the warning.
+    static var warnBeforeMinutes: Int {
+        get { max(0, defaults.integer(forKey: Key.warnBefore)) }
+        set { defaults.set(newValue, forKey: Key.warnBefore) }
+    }
+
     /// Name of the alert sound played with each reminder. Empty string means silent.
     static var notificationSound: String {
         get { defaults.string(forKey: Key.sound) ?? defaultSound }
@@ -52,6 +60,7 @@ enum Settings {
     }
 
     static var workLimit: TimeInterval { TimeInterval(workLimitMinutes * 60) }
+    static var warnBefore: TimeInterval { TimeInterval(warnBeforeMinutes * 60) }
     static var restThreshold: TimeInterval { TimeInterval(restThresholdMinutes * 60) }
     static var remindEvery: TimeInterval { TimeInterval(remindEveryMinutes * 60) }
 }

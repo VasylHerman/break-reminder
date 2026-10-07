@@ -17,6 +17,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let workLimitMenu = NSMenu()
     private let restThresholdMenu = NSMenu()
     private let soundMenu = NSMenu()
+    private let warnBeforeMenu = NSMenu()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         Settings.registerDefaults()
@@ -68,6 +69,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         case .working where snapshot.currentSeconds >= Settings.workLimit:
             color = .systemRed
             description = "Over work limit"
+        case .working where Settings.warnBefore > 0 && snapshot.currentSeconds >= Settings.workLimit - Settings.warnBefore:
+            color = .systemYellow
+            description = "Break coming up"
         case .working:
             color = .labelColor
             description = "Working"
@@ -125,6 +129,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         restItem.submenu = restThresholdMenu
         menu.addItem(restItem)
 
+        let warnItem = NSMenuItem(title: "Warn Before Limit", action: nil, keyEquivalent: "")
+        let warnOff = NSMenuItem(title: "Off", action: #selector(setWarnBefore(_:)), keyEquivalent: "")
+        warnOff.tag = 0
+        warnBeforeMenu.addItem(warnOff)
+        warnBeforeMenu.addItem(.separator())
+        for minutes in [2, 3, 5, 10] {
+            let item = NSMenuItem(title: "\(minutes) minutes", action: #selector(setWarnBefore(_:)), keyEquivalent: "")
+            item.tag = minutes
+            warnBeforeMenu.addItem(item)
+        }
+        warnItem.submenu = warnBeforeMenu
+        menu.addItem(warnItem)
+
         let soundItem = NSMenuItem(title: "Sound", action: nil, keyEquivalent: "")
         let off = NSMenuItem(title: "Off", action: #selector(setSound(_:)), keyEquivalent: "")
         off.representedObject = ""
@@ -174,6 +191,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         for item in workLimitMenu.items { item.state = item.tag == Settings.workLimitMinutes ? .on : .off }
         for item in restThresholdMenu.items { item.state = item.tag == Settings.restThresholdMinutes ? .on : .off }
+        for item in warnBeforeMenu.items where !item.isSeparatorItem {
+            item.state = item.tag == Settings.warnBeforeMinutes ? .on : .off
+        }
         for item in soundMenu.items {
             guard let name = item.representedObject as? String else { continue }
             item.state = name == Settings.notificationSound ? .on : .off
@@ -212,6 +232,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         pasteboard.setString(Self.installCommand, forType: .string)
+    }
+
+    @objc private func setWarnBefore(_ sender: NSMenuItem) {
+        Settings.warnBeforeMinutes = sender.tag
+        tick()
     }
 
     @objc private func setSound(_ sender: NSMenuItem) {
