@@ -1,0 +1,198 @@
+import AppKit
+import ServiceManagement
+
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
+    private static let pollInterval: TimeInterval = 5
+
+    private var statusItem: NSStatusItem!
+    private var timer: Timer?
+    private let notifier = Notifier()
+    private var tracker: ActivityTracker!
+
+    private var previousState: ActivityState = .resting
+    private var lastReminder: Date?
+
+    private let stateLine = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+    private let lastWorkLine = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+    private let lastRestLine = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+    private let launchAtLoginItem = NSMenuItem(title: "Launch at Login", action: #selector(toggleLaunchAtLogin), keyEquivalent: "")
+    private let workLimitMenu = NSMenu()
+    private let restThresholdMenu = NSMenu()
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        Settings.registerDefaults()
+        tracker = ActivityTracker(restThreshold: Settings.restThreshold, pollInterval: Self.pollInterval)
+        previousState = tracker.state
+
+        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        statusItem.button?.imagePosition = .imageLeading
+        statusItem.menu = buildMenu()
+
+        notifier.requestAuthorization()
+        tick()
+
+        // .common mode keeps the title updating while the menu is open.
+        let timer = Timer(timeInterval: Self.pollInterval, repeats: true) { [weak self] _ in self?.tick() }
+        RunLoop.main.add(timer, forMode: .common)
+        self.timer = timer
+    }
+
+    // MARK: - Polling
+
+    private func tick() {
+        let now = Date()
+        let snapshot = tracker.tick(now: now)
+
+        if snapshot.state != previousState {
+            previousState = snapshot.state
+            lastReminder = nil
+        }
+
+        updateStatusItem(snapshot)
+        remindIfNeeded(snapshot, now: now)
+    }
+
+    private func remindIfNeeded(_ snapshot: ActivityTracker.Snapshot, now: Date) {
+        guard snapshot.state == .working, snapshot.currentSeconds >= Settings.workLimit else { return }
+        if let last = lastReminder, now.timeIntervalSince(last) < Settings.remindEvery { return }
+        lastReminder = now
+
+        let minutes = Int(snapshot.currentSeconds / 60)
+        notifier.send(
+            title: "Time for a break",
+            body: "You have been working for \(minutes) minutes. Step away from the keyboard for \(Settings.restThresholdMinutes) minutes."
+        )
+    }
+
+    // MARK: - Status bar
+
+    private func updateStatusItem(_ snapshot: ActivityTracker.Snapshot) {
+        guard let button = statusItem.button else { return }
+        let time = Self.format(snapshot.currentSeconds)
+
+        let symbol: String
+        let color: NSColor
+        let description: String
+        switch snapshot.state {
+        case .working where snapshot.currentSeconds >= Settings.workLimit:
+            symbol = "exclamationmark.triangle.fill"
+            color = .systemRed
+            description = "Over work limit"
+        case .working:
+            symbol = "keyboard"
+            color = .labelColor
+            description = "Working"
+        case .resting:
+            symbol = "cup.and.saucer.fill"
+            color = .labelColor
+            description = "Resting"
+        }
+
+        button.image = NSImage(systemSymbolName: symbol, accessibilityDescription: description)
+        button.attributedTitle = NSAttributedString(
+            string: " " + time,
+            attributes: [.foregroundColor: color, .font: NSFont.menuBarFont(ofSize: 0)]
+        )
+        button.toolTip = "\(description): \(time)"
+    }
+
+    static func format(_ seconds: TimeInterval) -> String {
+        let total = Int(seconds) / 60
+        let hours = total / 60
+        let minutes = total % 60
+        return hours > 0 ? String(format: "%dh %02dm", hours, minutes) : "\(minutes)m"
+    }
+
+    // MARK: - Menu
+
+    private func buildMenu() -> NSMenu {
+        let menu = NSMenu()
+        menu.delegate = self
+
+        for line in [stateLine, lastWorkLine, lastRestLine] {
+            line.isEnabled = false
+            menu.addItem(line)
+        }
+        menu.addItem(.separator())
+
+        menu.addItem(NSMenuItem(title: "Reset Work Timer", action: #selector(resetWork), keyEquivalent: "r"))
+        menu.addItem(.separator())
+
+        let workLimitItem = NSMenuItem(title: "Work Limit", action: nil, keyEquivalent: "")
+        for minutes in [25, 30, 45, 60, 90] {
+            let item = NSMenuItem(title: "\(minutes) minutes", action: #selector(setWorkLimit(_:)), keyEquivalent: "")
+            item.tag = minutes
+            workLimitMenu.addItem(item)
+        }
+        workLimitItem.submenu = workLimitMenu
+        menu.addItem(workLimitItem)
+
+        let restItem = NSMenuItem(title: "Rest Counts After Idle", action: nil, keyEquivalent: "")
+        for minutes in [2, 3, 5, 10] {
+            let item = NSMenuItem(title: "\(minutes) minutes", action: #selector(setRestThreshold(_:)), keyEquivalent: "")
+            item.tag = minutes
+            restThresholdMenu.addItem(item)
+        }
+        restItem.submenu = restThresholdMenu
+        menu.addItem(restItem)
+
+        menu.addItem(launchAtLoginItem)
+        menu.addItem(.separator())
+        menu.addItem(NSMenuItem(title: "Quit Break Reminder", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+        return menu
+    }
+
+    func menuWillOpen(_ menu: NSMenu) {
+        let snapshot = tracker.tick()
+        let time = Self.format(snapshot.currentSeconds)
+        switch snapshot.state {
+        case .working:
+            stateLine.title = "Working for \(time) (limit \(Settings.workLimitMinutes)m)"
+        case .resting:
+            stateLine.title = "Resting for \(time)"
+        }
+        lastWorkLine.title = "Last work block: " + (snapshot.lastWorkSeconds.map(Self.format) ?? "–")
+        lastRestLine.title = "Last rest: " + (snapshot.lastRestSeconds.map(Self.format) ?? "–")
+
+        for item in workLimitMenu.items { item.state = item.tag == Settings.workLimitMinutes ? .on : .off }
+        for item in restThresholdMenu.items { item.state = item.tag == Settings.restThresholdMinutes ? .on : .off }
+
+        if #available(macOS 13.0, *) {
+            launchAtLoginItem.state = SMAppService.mainApp.status == .enabled ? .on : .off
+            launchAtLoginItem.isEnabled = Bundle.main.bundleIdentifier != nil
+        }
+    }
+
+    // MARK: - Actions
+
+    @objc private func resetWork() {
+        tracker.resetWork()
+        lastReminder = nil
+        tick()
+    }
+
+    @objc private func setWorkLimit(_ sender: NSMenuItem) {
+        Settings.workLimitMinutes = sender.tag
+        lastReminder = nil
+        tick()
+    }
+
+    @objc private func setRestThreshold(_ sender: NSMenuItem) {
+        Settings.restThresholdMinutes = sender.tag
+        tracker.restThreshold = Settings.restThreshold
+        tick()
+    }
+
+    @objc private func toggleLaunchAtLogin() {
+        guard #available(macOS 13.0, *) else { return }
+        do {
+            if SMAppService.mainApp.status == .enabled {
+                try SMAppService.mainApp.unregister()
+            } else {
+                try SMAppService.mainApp.register()
+            }
+        } catch {
+            NSLog("Launch at login toggle failed: \(error)")
+        }
+    }
+}
