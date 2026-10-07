@@ -55,16 +55,22 @@ The bundle is ad-hoc signed, which is enough for local use. Nothing is uploaded 
 | Working for / Resting for | Current counter and the configured limit |
 | Last work block / Last rest | Length of the previous period, for a quick sanity check |
 | Reset Work Timer | Start the current work block from zero |
-| Work Limit | 25, 30, 45, 60 or 90 minutes |
-| Rest Counts After Idle | 2, 3, 5 or 10 minutes of no input |
-| Warn Before Limit | Turn the counter orange 2, 3, 5 or 10 minutes before the limit, or Off |
-| Sound | Any built-in macOS alert sound, or Off. Picking one plays a preview |
-| Launch at Login | Registers the app as a login item |
-| Break Reminder vX.Y.Z | Installed version |
+| Pause Reminders | Silence reminders for 30 minutes, 1 hour, 2 hours or until tomorrow. The counter keeps running. A Resume item appears while paused |
+| Work Limit | 25, 30, 45, 60, 90 minutes, or Custom… which opens Settings |
+| Rest Counts After Idle | 2, 3, 5, 10 minutes, or Custom… which opens Settings |
+| Settings… | Opens the Settings window (⌘,) |
 | Feedback | Request a Feature and Report a Bug open prefilled GitHub issue forms with your app version, macOS version, install method, settings and current state. Also links to Release Notes and the project page |
-| Copy Homebrew Install Command | Puts `brew install vasylherman/tap/break-reminder` on the clipboard |
 
-Settings are stored in `UserDefaults` under `dev.vasyl.BreakReminder`.
+## Settings
+
+| Tab | Options |
+| --- | --- |
+| General | Launch at login. Work limit, rest threshold and warn-before minutes as steppers |
+| Reminders | Repeat interval while over the limit. Alert sound with preview, or Off |
+| About | Version, install method, feedback and project links, copy the Homebrew install command |
+
+Settings are stored in `UserDefaults` under `dev.vasyl.BreakReminder` and apply immediately.
+For development, `open BreakReminder.app --args --settings` opens the window at launch.
 
 ## How it decides work vs rest
 
@@ -88,6 +94,9 @@ Sources/BreakReminder/
   ActivityTracker.swift  work/rest state machine on top of system idle time
   Notifier.swift         Notification Center banners (osascript fallback for `swift run`)
   Settings.swift         UserDefaults-backed options
+  SettingsView.swift     SwiftUI settings form (General, Reminders, About)
+  SettingsWindowController.swift  hosts the form in an AppKit window
+  Feedback.swift         GitHub links and prefilled issue forms
 Support/Info.plist       bundle metadata (LSUIElement hides the Dock icon)
 build.sh                 build, bundle, run, install
 ```

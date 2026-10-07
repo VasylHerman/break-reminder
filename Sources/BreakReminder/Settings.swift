@@ -4,12 +4,13 @@ import Foundation
 enum Settings {
     private static let defaults = UserDefaults.standard
 
-    private enum Key {
+    enum Key {
         static let workLimit = "workLimitMinutes"
         static let restThreshold = "restThresholdMinutes"
         static let remindEvery = "remindEveryMinutes"
         static let sound = "notificationSound"
         static let warnBefore = "warnBeforeMinutes"
+        static let pausedUntil = "remindersPausedUntil"
     }
 
     /// Built-in macOS alert sounds, found in /System/Library/Sounds.
@@ -53,10 +54,24 @@ enum Settings {
         set { defaults.set(newValue, forKey: Key.warnBefore) }
     }
 
+    /// Reminders are silenced until this date. Nil or past means active.
+    static var remindersPausedUntil: Date? {
+        get {
+            guard let date = defaults.object(forKey: Key.pausedUntil) as? Date, date > Date() else { return nil }
+            return date
+        }
+        set { defaults.set(newValue, forKey: Key.pausedUntil) }
+    }
+
     /// Name of the alert sound played with each reminder. Empty string means silent.
     static var notificationSound: String {
         get { defaults.string(forKey: Key.sound) ?? defaultSound }
         set { defaults.set(newValue, forKey: Key.sound) }
+    }
+
+    /// Cheap fingerprint of every user setting, used to detect real changes.
+    static var signature: String {
+        "\(workLimitMinutes)|\(restThresholdMinutes)|\(warnBeforeMinutes)|\(remindEveryMinutes)|\(notificationSound)"
     }
 
     static var workLimit: TimeInterval { TimeInterval(workLimitMinutes * 60) }
