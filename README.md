@@ -32,6 +32,13 @@ and reminds you through Notification Center to take a break.
   not counted against you. History lives in `~/Library/Application Support/BreakReminder/history.json`:
   daily totals for 62 days and break events for 14 days, older data is dropped automatically.
 
+- Firmness. Gentle sends one reminder per block with no repeats and no blink; Normal repeats on
+  your interval and blinks in the warning; Firm repeats every 5 minutes. Automatic, the default,
+  earns calm from the last 7 days: 90% on time means Gentle, 40 to 89 Normal, 15 to 39 Firm.
+  Below 15 the app steps down to Gentle and asks once, through a notification with Pause for
+  Today and Change Limit buttons, instead of nagging. Re-evaluated daily once 5 breaks were due.
+  Pick a level in Settings to lock it.
+
 No Accessibility or Input Monitoring permission is needed. The app only reads the system idle
 time (`CGEventSource.secondsSinceLastEventType`), never individual keystrokes or pointer events.
 The only prompt you will see is the standard notification permission dialog on first launch.
@@ -76,6 +83,7 @@ The bundle is ad-hoc signed, which is enough for local use. Nothing is uploaded 
 | --- | --- |
 | Working for / Resting for | Current counter and the configured limit |
 | Breaks this week | Breaks taken of breaks due in the calendar week |
+| Firmness | Current level and whether it is earned, stepped down or locked |
 | Last work block / Last rest | Length of the previous period, for a quick sanity check |
 | Reset Work Timer | Start the current work block from zero. A pending break counts as skipped |
 | Stats… | Opens the window on the Stats tab (⌘S) |
@@ -91,7 +99,7 @@ The bundle is ad-hoc signed, which is enough for local use. Nothing is uploaded 
 | --- | --- |
 | General | Launch at login. Work limit, rest threshold and warn-before minutes as steppers |
 | Appearance | Live preview, theme (Quiet, Signal, Accent), show as (minutes with unit, minutes, dot, heart), outline mode, weekly score heart beside it, and under Advanced the outline direction and blink |
-| Reminders | Repeat interval, editable title and message with `{minutes}` and `{rest}` placeholders, sound picker that previews on change, Send Test Notification |
+| Reminders | Firmness (Automatic, Gentle, Normal, Firm), repeat interval, editable title and message with `{minutes}` and `{rest}` placeholders, sound picker that previews on change, Send Test Notification |
 | Smart Pause | Master switch, the three triggers with a live "Now" indicator when detected, and the grace period |
 | About | Version, install method, feedback and project links, copy the Homebrew install command, Reset All Settings |
 
@@ -120,6 +128,7 @@ Sources/BreakReminder/
   ActivityTracker.swift  work/rest state machine on top of system idle time
   Notifier.swift         Notification Center banners (osascript fallback for `swift run`)
   SmartPause.swift       call, screen share and fullscreen detection
+  Firmness.swift         firmness levels and the automatic mapping from the weekly score
   History.swift          on-disk daily totals and break events with retention
   Stats.swift            day, week and month aggregation
   StatsView.swift        Stats pane

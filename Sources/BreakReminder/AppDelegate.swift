@@ -24,6 +24,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let lastRestLine = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private let pausedLine = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private let breaksLine = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+    private let firmnessLine = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private let resumeItem = NSMenuItem(title: "Resume Reminders", action: #selector(resumeReminders), keyEquivalent: "")
     private let workLimitMenu = NSMenu()
     private let restThresholdMenu = NSMenu()
@@ -46,6 +47,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         Feedback.snapshotProvider = { [weak self] in self?.lastSnapshot }
         Feedback.blockStartProvider = { [weak self] in self?.tracker.currentBlockStart }
+        notifier.onPauseToday = { [weak self] in self?.pauseUntilTomorrow() }
+        notifier.onOpenSettings = { [weak self] in self?.openSettings() }
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         statusItem.menu = buildMenu()
@@ -89,9 +92,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let snapshot = tracker.tick(now: now)
         lastSnapshot = snapshot
         updateSmartPause(now: now)
+        evaluateFirmnessIfDue(now: now)
         updateStatusItem(snapshot)
         recordDueIfNeeded(snapshot, now: now)
         remindIfNeeded(snapshot, now: now)
+    }
+
+    /// Once a day: earn the automatic level from the last 7 days, once at least 5 breaks were due.
+    private func evaluateFirmnessIfDue(now: Date) {
+        let today = Self.dayKey(now)
+        guard Settings.autoFirmnessDay != today else { return }
+        Settings.autoFirmnessDay = today
+        let rolling = FirmnessPolicy.rollingScore(history: history, now: now)
+        guard rolling.counted >= FirmnessPolicy.minimumBreaks else { return }
+        let earned = FirmnessPolicy.level(forScore: rolling.score)
+        Settings.autoFirmness = earned.level
+        Settings.autoSteppedDown = earned.steppedDown
+        if earned.steppedDown, Settings.firmnessMode == .automatic, Settings.steppedDownCardDay != today {
+            Settings.steppedDownCardDay = today
+            notifier.sendSteppedDownCard()
+        }
+    }
+
+    private static func dayKey(_ date: Date) -> String {
+        let f = DateFormatter()
+        f.calendar = Calendar(identifier: .gregorian)
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "yyyy-MM-dd"
+        return f.string(from: date)
     }
 
     /// Logs one "break due" event per work block when the limit is reached, and expires stale ones.
@@ -123,7 +151,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func remindIfNeeded(_ snapshot: ActivityTracker.Snapshot, now: Date) {
         guard snapshot.state == .working, snapshot.currentSeconds >= Settings.workLimit else { return }
         if remindersHeld { return }
-        if let last = tracker.lastReminder, now.timeIntervalSince(last) < Settings.remindEvery { return }
+        if let last = tracker.lastReminder {
+            // Repeats depend on the firmness level; Gentle sends one reminder per block.
+            guard let interval = Settings.firmness.repeatInterval(normal: Settings.remindEvery),
+                  now.timeIntervalSince(last) >= interval
+            else { return }
+        }
         tracker.lastReminder = now
 
         notifier.sendBreakReminder(minutes: Int(snapshot.currentSeconds / 60))
@@ -144,7 +177,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     /// Seconds between blinks: the number of minutes left before the limit (5m left -> every 5s),
     /// 1s at and past the limit. Nil when no blink is due.
     private func blinkPeriod(now: Date) -> TimeInterval? {
-        guard Settings.warnBlink, Settings.warnBefore > 0,
+        guard Settings.warnBlink, Settings.warnBefore > 0, Settings.firmness.allowsBlink,
               !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion,
               let snapshot = lastSnapshot, snapshot.state == .working,
               !remindersHeld
@@ -273,7 +306,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let menu = NSMenu()
         menu.delegate = self
 
-        for line in [stateLine, lastWorkLine, lastRestLine, breaksLine, pausedLine] {
+        for line in [stateLine, lastWorkLine, lastRestLine, breaksLine, firmnessLine, pausedLine] {
             line.isEnabled = false
             menu.addItem(line)
         }
@@ -352,6 +385,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         lastRestLine.title = "Last rest: " + (snapshot.lastRestSeconds.map(TimeFormat.minutes) ?? "–")
         let week = Stats.summary(period: .week, history: history, live: snapshot, blockStart: tracker.currentBlockStart)
         breaksLine.title = week.due > 0 ? "Breaks this week: \(week.taken) of \(week.due)" : "No breaks due yet this week"
+        firmnessLine.title = Self.firmnessDescription()
 
         if let until = Settings.remindersPausedUntil {
             let formatter = DateFormatter()
@@ -375,6 +409,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         for item in restThresholdMenu.items where !item.isSeparatorItem {
             item.state = item.tag == Settings.restThresholdMinutes ? .on : .off
+        }
+    }
+
+    /// "Firmness: Gentle, earned" / "Firmness: Firm, locked".
+    static func firmnessDescription() -> String {
+        let level = Settings.firmness
+        switch Settings.firmnessMode {
+        case .automatic:
+            let how = Settings.autoSteppedDown ? "stepped down" : (Settings.autoFirmnessDay == nil ? "starting level" : "earned")
+            return "Firmness: \(level.label), \(how)"
+        default:
+            return "Firmness: \(level.label), locked"
         }
     }
 

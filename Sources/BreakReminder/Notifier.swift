@@ -9,11 +9,58 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
 
     private let hasBundle = Bundle.main.bundleIdentifier != nil
 
+    static let steppedDownCategory = "steppedDown"
+    static let pauseTodayAction = "pauseToday"
+    static let openSettingsAction = "openSettings"
+
+    /// Handlers for the card's buttons, set by the app delegate.
+    var onPauseToday: (() -> Void)?
+    var onOpenSettings: (() -> Void)?
+
     override init() {
         super.init()
         if hasBundle {
-            UNUserNotificationCenter.current().delegate = self
+            let center = UNUserNotificationCenter.current()
+            center.delegate = self
+            let category = UNNotificationCategory(
+                identifier: Self.steppedDownCategory,
+                actions: [
+                    UNNotificationAction(identifier: Self.pauseTodayAction, title: "Pause for Today"),
+                    UNNotificationAction(identifier: Self.openSettingsAction, title: "Change Limit…", options: [.foreground]),
+                ],
+                intentIdentifiers: []
+            )
+            center.setNotificationCategories([category])
         }
+    }
+
+    /// Shown once when the automatic firmness steps down because reminders were ignored all week.
+    func sendSteppedDownCard() {
+        guard hasBundle else {
+            send(title: "Reminders are quieter now", body: "Most reminders were skipped this week. Change the limit in Settings, or pause for today.", sound: nil)
+            return
+        }
+        let content = UNMutableNotificationContent()
+        content.title = "Reminders are quieter now"
+        content.body = "Most reminders were skipped this week, so repeats and blinking are off. Change the limit, or pause for today."
+        content.categoryIdentifier = Self.steppedDownCategory
+        let request = UNNotificationRequest(identifier: "steppedDown", content: content, trigger: nil)
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error { NSLog("Card failed: \(error)") }
+        }
+    }
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        switch response.actionIdentifier {
+        case Self.pauseTodayAction: onPauseToday?()
+        case Self.openSettingsAction: onOpenSettings?()
+        default: break
+        }
+        completionHandler()
     }
 
     func requestAuthorization() {

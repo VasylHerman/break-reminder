@@ -24,6 +24,11 @@ enum Settings {
         static let smartPauseScreenShare = "smartPauseScreenShare"
         static let smartPauseFullscreen = "smartPauseFullscreen"
         static let smartPauseGrace = "smartPauseGraceMinutes"
+        static let firmnessMode = "firmnessMode"
+        static let autoFirmness = "autoFirmness"
+        static let autoFirmnessDay = "autoFirmnessDay"
+        static let autoSteppedDown = "autoSteppedDown"
+        static let steppedDownCardDay = "steppedDownCardDay"
     }
 
     static let defaultReminderTitle = "Time for a break"
@@ -56,6 +61,8 @@ enum Settings {
             Key.smartPauseScreenShare: true,
             Key.smartPauseFullscreen: false,
             Key.smartPauseGrace: 2,
+            Key.firmnessMode: FirmnessMode.automatic.rawValue,
+            Key.autoFirmness: Firmness.normal.rawValue,
         ])
     }
 
@@ -64,7 +71,9 @@ enum Settings {
         for key in [Key.workLimit, Key.restThreshold, Key.remindEvery, Key.sound, Key.warnBefore,
                     Key.pausedUntil, Key.reminderTitle, Key.reminderBody, Key.warnBlink,
                     Key.outlineStyle, Key.showUnit, Key.counterStyle, Key.showScore, Key.theme, Key.smartPauseEnabled, Key.smartPauseCall,
-                    Key.smartPauseScreenShare, Key.smartPauseFullscreen, Key.smartPauseGrace] {
+                    Key.smartPauseScreenShare, Key.smartPauseFullscreen, Key.smartPauseGrace,
+                    Key.firmnessMode, Key.autoFirmness, Key.autoFirmnessDay, Key.autoSteppedDown,
+                    Key.steppedDownCardDay] {
             defaults.removeObject(forKey: key)
         }
     }
@@ -136,6 +145,33 @@ enum Settings {
     }
     static var smartPauseGrace: TimeInterval { TimeInterval(smartPauseGraceMinutes * 60) }
 
+    // Firmness.
+    static var firmnessMode: FirmnessMode {
+        get { FirmnessMode(rawValue: defaults.string(forKey: Key.firmnessMode) ?? "") ?? .automatic }
+        set { defaults.set(newValue.rawValue, forKey: Key.firmnessMode) }
+    }
+    /// Level earned by the automatic mode at the last daily evaluation.
+    static var autoFirmness: Firmness {
+        get { Firmness(rawValue: defaults.string(forKey: Key.autoFirmness) ?? "") ?? .normal }
+        set { defaults.set(newValue.rawValue, forKey: Key.autoFirmness) }
+    }
+    /// Day key ("yyyy-MM-dd") of the last automatic evaluation.
+    static var autoFirmnessDay: String? {
+        get { defaults.string(forKey: Key.autoFirmnessDay) }
+        set { defaults.set(newValue, forKey: Key.autoFirmnessDay) }
+    }
+    /// True when the last evaluation stepped down to Gentle because reminders were being ignored.
+    static var autoSteppedDown: Bool {
+        get { defaults.bool(forKey: Key.autoSteppedDown) }
+        set { defaults.set(newValue, forKey: Key.autoSteppedDown) }
+    }
+    static var steppedDownCardDay: String? {
+        get { defaults.string(forKey: Key.steppedDownCardDay) }
+        set { defaults.set(newValue, forKey: Key.steppedDownCardDay) }
+    }
+    /// The level in force right now.
+    static var firmness: Firmness { firmnessMode.fixed ?? autoFirmness }
+
     static var theme: Theme {
         get { Theme(rawValue: defaults.string(forKey: Key.theme) ?? "") ?? .quiet }
         set { defaults.set(newValue.rawValue, forKey: Key.theme) }
@@ -180,7 +216,7 @@ enum Settings {
 
     /// Cheap fingerprint of every user setting, used to detect real changes.
     static var signature: String {
-        "\(workLimitMinutes)|\(restThresholdMinutes)|\(warnBeforeMinutes)|\(remindEveryMinutes)|\(notificationSound)|\(outlineStyle.rawValue)|\(counterStyle.rawValue)|\(showScore)|\(theme.rawValue)"
+        "\(workLimitMinutes)|\(restThresholdMinutes)|\(warnBeforeMinutes)|\(remindEveryMinutes)|\(notificationSound)|\(outlineStyle.rawValue)|\(counterStyle.rawValue)|\(showScore)|\(theme.rawValue)|\(firmnessMode.rawValue)"
     }
 
     static var workLimit: TimeInterval { TimeInterval(workLimitMinutes * 60) }

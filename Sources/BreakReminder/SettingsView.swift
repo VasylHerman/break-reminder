@@ -183,13 +183,39 @@ struct ReminderSettingsView: View {
     @AppStorage(Settings.Key.workLimit) private var workLimit = 25
     @AppStorage(Settings.Key.reminderTitle) private var title = Settings.defaultReminderTitle
     @AppStorage(Settings.Key.reminderBody) private var body_ = Settings.defaultReminderBody
+    @AppStorage(Settings.Key.firmnessMode) private var firmnessMode = FirmnessMode.automatic.rawValue
+    @AppStorage(Settings.Key.autoFirmness) private var autoFirmness = Firmness.normal.rawValue
     @State private var testSent = false
+
+    private var currentMode: FirmnessMode { FirmnessMode(rawValue: firmnessMode) ?? .automatic }
+    private var currentLevel: Firmness { currentMode.fixed ?? Firmness(rawValue: autoFirmness) ?? .normal }
 
     var body: some View {
         Form {
+            Section("Firmness") {
+                Picker("Firmness", selection: $firmnessMode) {
+                    Text(FirmnessMode.automatic.label).tag(FirmnessMode.automatic.rawValue)
+                    Divider()
+                    ForEach(Firmness.allCases) { Text($0.label).tag($0.rawValue) }
+                }
+                HStack(alignment: .firstTextBaseline) {
+                    Text(currentMode == .automatic ? "Now: \(currentLevel.label)" : currentLevel.label)
+                    Text(currentLevel.summary)
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                if currentMode == .automatic {
+                    Text("Automatic earns calm: 90% on time over the last 7 days means Gentle, 40 to 89 Normal, "
+                         + "15 to 39 Firm. Below 15 the app steps down to Gentle and asks once whether to change "
+                         + "the limit or pause. Re-evaluated daily once 5 breaks were due.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
             Section("Reminder") {
                 StepperRow(label: "Repeat while over the limit every", value: "\(remindEvery) min",
                            number: $remindEvery, range: 1...120)
+                    .disabled(currentLevel == .gentle)
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Title")
                     TextField("", text: $title, prompt: Text(Settings.defaultReminderTitle))
