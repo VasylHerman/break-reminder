@@ -46,6 +46,13 @@ and reminds you through Notification Center to take a break.
   Today and Change Limit buttons, instead of nagging. Re-evaluated daily once 5 breaks were due.
   Pick a level in Settings to lock it.
 
+- The arc is a recovery gauge. It fills with work and unwinds from the first idle seconds, at a
+  rate where the rest the block deserves brings it to empty; the heartbeat keeps going until it
+  is. Return before the threshold and the block continues with the arc back at the work level.
+  With "Carry unfinished rest into the next block" on, a longer block needs a proportionally longer
+  rest and whatever was not recovered starts the next block's arc. Reminders and the limit are
+  unaffected.
+
 No Accessibility or Input Monitoring permission is needed. The app only reads the system idle
 time (`CGEventSource.secondsSinceLastEventType`), never individual keystrokes or pointer events.
 The only prompt you will see is the standard notification permission dialog on first launch.

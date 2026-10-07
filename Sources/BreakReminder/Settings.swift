@@ -14,6 +14,8 @@ enum Settings {
         static let reminderTitle = "reminderTitle"
         static let reminderBody = "reminderBody"
         static let warnBlink = "warnBlink"
+        static let carryOverRest = "carryOverRest"
+        static let carrySeconds = "carrySeconds"
         static let beatNormal = "beatNormalBPM"
         static let beatWarning = "beatWarningBPM"
         static let beatOver = "beatOverBPM"
@@ -60,6 +62,7 @@ enum Settings {
             Key.reminderTitle: defaultReminderTitle,
             Key.reminderBody: defaultReminderBody,
             Key.warnBlink: true,
+            Key.carryOverRest: false,
             Key.beatNormal: 10,
             Key.beatWarning: 40,
             Key.beatOver: 80,
@@ -86,6 +89,7 @@ enum Settings {
     static func resetAll() {
         for key in [Key.workLimit, Key.restThreshold, Key.remindEvery, Key.sound, Key.warnBefore,
                     Key.pausedUntil, Key.reminderTitle, Key.reminderBody, Key.warnBlink,
+                    Key.carryOverRest, Key.carrySeconds,
                     Key.beatNormal, Key.beatWarning, Key.beatOver, Key.beatWhileWorking,
                     Key.beatBody, Key.beatLevel, Key.beatArc,
                     Key.outlineStyle, Key.outlineSpan, Key.showUnit, Key.counterStyle, Key.showScore, Key.theme, Key.smartPauseEnabled, Key.smartPauseCall,
@@ -228,6 +232,17 @@ enum Settings {
         set { defaults.set(newValue.rawValue, forKey: Key.counterStyle) }
     }
 
+    /// Carry unfinished rest into the next block: the arc starts from what was not recovered.
+    static var carryOverRest: Bool {
+        get { defaults.bool(forKey: Key.carryOverRest) }
+        set { defaults.set(newValue, forKey: Key.carryOverRest) }
+    }
+    /// Work seconds left on the gauge when the last rest ended.
+    static var carrySeconds: TimeInterval {
+        get { carryOverRest ? max(0, defaults.double(forKey: Key.carrySeconds)) : 0 }
+        set { defaults.set(newValue, forKey: Key.carrySeconds) }
+    }
+
     // Heartbeat rates, beats per minute. Adjustable with
     // `defaults write dev.vasyl.BreakReminder beatWarningBPM -int 120` and friends.
     static var beatNormalBPM: Int {
@@ -276,7 +291,7 @@ enum Settings {
 
     /// Cheap fingerprint of every user setting, used to detect real changes.
     static var signature: String {
-        "\(workLimitMinutes)|\(restThresholdMinutes)|\(warnBeforeMinutes)|\(remindEveryMinutes)|\(notificationSound)|\(beatNormalBPM)|\(beatWarningBPM)|\(beatOverBPM)|\(beatWhileWorking)|\(beatBody)|\(beatLevel)|\(beatArc)|\(outlineStyle.rawValue)|\(outlineSpanPercent)|\(counterStyle.rawValue)|\(showScore)|\(theme.rawValue)|\(firmnessMode.rawValue)"
+        "\(workLimitMinutes)|\(restThresholdMinutes)|\(warnBeforeMinutes)|\(remindEveryMinutes)|\(notificationSound)|\(beatNormalBPM)|\(beatWarningBPM)|\(beatOverBPM)|\(beatWhileWorking)|\(carryOverRest)|\(beatBody)|\(beatLevel)|\(beatArc)|\(outlineStyle.rawValue)|\(outlineSpanPercent)|\(counterStyle.rawValue)|\(showScore)|\(theme.rawValue)|\(firmnessMode.rawValue)"
     }
 
     static var workLimit: TimeInterval { TimeInterval(workLimitMinutes * 60) }

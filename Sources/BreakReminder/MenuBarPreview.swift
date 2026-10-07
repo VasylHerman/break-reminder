@@ -22,9 +22,12 @@ struct MenuBarPreview: View {
     var body: some View {
         TimelineView(.animation) { context in
             let t = context.date.timeIntervalSince(start).truncatingRemainder(dividingBy: blockDuration + overDuration + restDuration)
-            let progress = min(t / blockDuration, 1)
             let resting = t >= blockDuration + overDuration
             let over = t >= blockDuration && !resting
+            // While resting the arc unwinds from the over level back to empty.
+            let progress = resting
+                ? (1 + overDuration / blockDuration) * (1 - (t - blockDuration - overDuration) / restDuration)
+                : min(t / blockDuration, 1)
             let minutesLeft = Double(workLimit) * (1 - progress)
             let warning = !over && warnBefore > 0 && minutesLeft <= Double(warnBefore)
             let elapsedSeconds = resting ? (t - blockDuration - overDuration) * 120
@@ -37,7 +40,7 @@ struct MenuBarPreview: View {
             let outlineWidth: CGFloat = highContrast ? 2 : 1
             let bpm: Double? = !blink ? nil : over ? Double(Settings.beatOverBPM)
                 : warning ? Double(Settings.beatNormalBPM) + (Double(Settings.beatWarningBPM) - Double(Settings.beatNormalBPM)) * (1 - minutesLeft / Double(max(warnBefore, 1)))
-                : (Settings.beatWhileWorking && !resting ? Double(Settings.beatNormalBPM) : nil)
+                : (Settings.beatWhileWorking || resting ? Double(Settings.beatNormalBPM) : nil)
             let opacity = blinkOpacity(t: t, bpm: bpm)
             let ringColor = Color(nsColor: theme.outlineColor(for: .working, highContrast: highContrast, glyph: true))
 
@@ -54,11 +57,9 @@ struct MenuBarPreview: View {
                             .opacity(Settings.beatLevel ? opacity : 1)
                         Image(nsImage: ScoreHeart.canvas(fill: score ?? 0, color: .labelColor, canvas: 22, parts: .body) ?? NSImage())
                             .opacity(Settings.beatBody ? opacity : 1)
-                        if !resting {
-                            Outline(stroke: outlineStroke(progress: progress, over: over), circular: true)
-                                .stroke(ringColor, style: StrokeStyle(lineWidth: outlineWidth, lineCap: .round))
-                                .opacity(Settings.beatArc ? opacity : 1)
-                        }
+                        Outline(stroke: outlineStroke(progress: progress, over: over), circular: true)
+                            .stroke(ringColor, style: StrokeStyle(lineWidth: outlineWidth, lineCap: .round))
+                            .opacity(Settings.beatArc ? opacity : 1)
                     }
                     .frame(width: 22, height: 22)
                 } else if counterStyle == .hidden {
@@ -100,7 +101,7 @@ struct MenuBarPreview: View {
     }
 
     private func outlineStroke(progress: Double, over: Bool) -> (anchor: OutlineStyle.Anchor, start: Double, end: Double)? {
-        if style == .off || progress == 0 && !over { return nil }
+        if style == .off || progress <= 0 && !over { return nil }
         if over { return style.overStroke(span: span) }
         return style.stroke(progress: progress, span: span)
     }

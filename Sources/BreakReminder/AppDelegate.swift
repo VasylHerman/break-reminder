@@ -39,6 +39,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 self.history.recordWork(start: start, end: end)
             case .resting:
                 self.history.recordRest(start: start, end: end)
+                // Carry what the rest did not recover into the next block.
+                let gauge = RecoveryGauge.evaluate(RecoveryGauge.Input(
+                    state: .resting, currentSeconds: end.timeIntervalSince(start), idleSeconds: 0,
+                    carrySeconds: Settings.carrySeconds, lastWorkSeconds: self.lastSnapshot?.lastWorkSeconds,
+                    workLimit: Settings.workLimit, restThreshold: Settings.restThreshold, carryOver: Settings.carryOverRest
+                ))
+                Settings.carrySeconds = gauge.level * Settings.workLimit
             }
             if state == .working {
                 // A rest begins where the work block ended.
@@ -172,15 +179,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         tick()
     }
 
+    // MARK: - Recovery gauge
+
+    private func gauge(for snapshot: ActivityTracker.Snapshot) -> RecoveryGauge.Output {
+        RecoveryGauge.evaluate(RecoveryGauge.Input(
+            state: snapshot.state, currentSeconds: snapshot.currentSeconds, idleSeconds: snapshot.idleSeconds,
+            carrySeconds: Settings.carrySeconds, lastWorkSeconds: snapshot.lastWorkSeconds,
+            workLimit: Settings.workLimit, restThreshold: Settings.restThreshold, carryOver: Settings.carryOverRest
+        ))
+    }
+
     // MARK: - Warning blink
 
     /// Seconds between beats from the heart rate for the current phase, nil when the heart is still.
     /// In the warning the rate climbs from the normal rate to the warning rate as the limit nears.
     private func blinkPeriod(now: Date) -> TimeInterval? {
         guard Settings.warnBlink, Settings.firmness.allowsBlink,
-              let snapshot = lastSnapshot, snapshot.state == .working,
+              let snapshot = lastSnapshot,
               !remindersHeld
         else { return nil }
+        let gauge = gauge(for: snapshot)
+        if gauge.unwinding {
+            // Resting with work still on the gauge: keep a calm beat until the arc is empty,
+            // if the item was beating when the pause began.
+            let wasBeating = Settings.beatWhileWorking
+                || gauge.workLevel >= (Settings.workLimit - Settings.warnBefore) / max(Settings.workLimit, 1)
+            return wasBeating ? 60 / Double(max(Settings.beatNormalBPM, 1)) : nil
+        }
+        guard snapshot.state == .working else { return nil }
         let elapsed = snapshot.currentSeconds + now.timeIntervalSince(snapshot.takenAt)
         let remaining = Settings.workLimit - elapsed
         let bpm: Double
@@ -299,9 +325,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 level: ScoreHeart.canvas(fill: week.adherence ?? 0, color: .labelColor, canvas: 22, parts: .level)
             )
             // The ring stays in the neutral tone in every state; the blink carries the warning.
-            let progress: Double? = snapshot.state == .working ? snapshot.currentSeconds / Settings.workLimit : nil
             let ringColor = theme.outlineColor(for: .working, highContrast: NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast, glyph: true)
-            progressBorder?.update(progress: progress, style: Settings.outlineStyle, color: ringColor)
+            progressBorder?.update(progress: arcProgress(snapshot), style: Settings.outlineStyle, color: ringColor)
             return
         } else if counterStyle == .hidden {
             // Dot in the state color, with the outline drawn as a ring around it.
@@ -321,9 +346,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             )
         }
 
-        // Outline around the counter (or ring around the dot) shows the block's progress; hidden while resting.
-        let progress: Double? = snapshot.state == .working ? snapshot.currentSeconds / Settings.workLimit : nil
-        progressBorder?.update(progress: progress, style: Settings.outlineStyle, color: borderColor)
+        // Outline around the counter (or ring around the dot): the recovery gauge.
+        progressBorder?.update(progress: arcProgress(snapshot), style: Settings.outlineStyle, color: borderColor)
+    }
+
+    /// Arc level for the status item: the gauge while working or unwinding, hidden once recovered.
+    private func arcProgress(_ snapshot: ActivityTracker.Snapshot) -> Double? {
+        let gauge = gauge(for: snapshot)
+        if snapshot.state == .resting, !gauge.unwinding { return nil }
+        return gauge.level
     }
 
     /// A 7 pt filled circle on a canvas the size of the ring, so the status item is wide enough for both.
@@ -430,7 +461,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         case .working:
             stateLine.title = "Working for \(time) (limit \(Settings.workLimitMinutes)m)"
         case .resting:
-            stateLine.title = "Resting for \(time)"
+            let gauge = gauge(for: snapshot)
+            stateLine.title = gauge.unwinding
+                ? "Resting for \(time), recovered \(Int((gauge.recovered * 100).rounded()))%"
+                : "Resting for \(time)"
         }
         lastWorkLine.title = "Last work block: " + (snapshot.lastWorkSeconds.map(TimeFormat.minutes) ?? "–")
         lastRestLine.title = "Last rest: " + (snapshot.lastRestSeconds.map(TimeFormat.minutes) ?? "–")

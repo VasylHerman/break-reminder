@@ -27,6 +27,7 @@ struct GeneralSettingsView: View {
     @AppStorage(Settings.Key.workLimit) private var workLimit = 25
     @AppStorage(Settings.Key.restThreshold) private var restThreshold = 5
     @AppStorage(Settings.Key.warnBefore) private var warnBefore = 5
+    @AppStorage(Settings.Key.carryOverRest) private var carryOverRest = false
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
     @State private var launchAtLoginError: String?
 
@@ -44,8 +45,11 @@ struct GeneralSettingsView: View {
                 StepperRow(label: "Rest counts after idle", value: "\(restThreshold) min", number: $restThreshold, range: 1...60)
                 StepperRow(label: "Warn before limit", value: warnBefore == 0 ? "Off" : "\(warnBefore) min",
                            number: $warnBefore, range: 0...60)
+                Toggle("Carry unfinished rest into the next block", isOn: $carryOverRest)
                 Text("The counter turns orange when the warning starts and red once the limit is reached. "
-                     + "Rest begins after the keyboard, mouse and trackpad have been idle for the rest threshold.")
+                     + "Rest begins after the keyboard, mouse and trackpad have been idle for the rest threshold. "
+                     + "The arc unwinds as you rest; with carry-over on, a longer block needs a longer rest "
+                     + "and whatever was not recovered starts the next block.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
