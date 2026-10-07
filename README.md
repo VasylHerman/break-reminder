@@ -20,7 +20,7 @@ and reminds you through Notification Center to take a break.
 - The item beats like a heart, a lub-dub at a configurable rate: during the warning it climbs
   from the normal rate (10 bpm) to the warning rate (40), and holds at the over rate (80) past
   the limit. Beating while working is on by default and can be turned off. In Heart mode you choose which
-  parts beat: the body, the level, the arc, any combination. Rates are in Settings › Appearance › Advanced or
+  parts beat: the body, the level, the arc, any combination; by default only the body beats. Rates are in Settings › Appearance › Advanced or
   `defaults write dev.vasyl.BreakReminder beatWarningBPM -int 120`. With Reduce Motion on it
   steps instead of fading. Increase Contrast thickens the outline.
 

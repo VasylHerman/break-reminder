@@ -88,8 +88,8 @@ struct AppearanceSettingsView: View {
     @AppStorage(Settings.Key.beatOver) private var beatOver = 80
     @AppStorage(Settings.Key.beatWhileWorking) private var beatWhileWorking = true
     @AppStorage(Settings.Key.beatBody) private var beatBody = true
-    @AppStorage(Settings.Key.beatLevel) private var beatLevel = true
-    @AppStorage(Settings.Key.beatArc) private var beatArc = true
+    @AppStorage(Settings.Key.beatLevel) private var beatLevel = false
+    @AppStorage(Settings.Key.beatArc) private var beatArc = false
     @State private var advancedExpanded = false
 
     private var currentCounter: CounterStyle { CounterStyle(rawValue: counterStyle) ?? .number }
