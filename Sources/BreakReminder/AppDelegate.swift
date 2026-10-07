@@ -141,11 +141,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private static let installCommand = "brew install vasylherman/tap/break-reminder"
 
     private static var versionString: String {
-        let info = Bundle.main.infoDictionary
-        let short = info?["CFBundleShortVersionString"] as? String
-        let build = info?["CFBundleVersion"] as? String
-        guard let short else { return "dev" }
-        return build.map { "v\(short) (\($0))" } ?? "v\(short)"
+        guard let short = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String else { return "dev" }
+        return "v\(short)"
     }
 
     func menuWillOpen(_ menu: NSMenu) {
