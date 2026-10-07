@@ -47,17 +47,19 @@ enum Theme: String, CaseIterable, Identifiable {
         }
     }
 
-    /// `glyph` is true for the dot and heart modes, where the ring is the item's only frame and needs more presence.
+    /// Outline tones follow the heart: the body at 40% of the label color while working, colored states
+    /// at 65%, like the battery's lighter body around its solid level. `glyph` is kept for callers.
     func outlineColor(for phase: CounterPhase, highContrast: Bool, glyph: Bool = false) -> NSColor {
-        let idle: NSColor = highContrast || glyph ? .secondaryLabelColor : .tertiaryLabelColor
+        let idle = NSColor.labelColor.withAlphaComponent(highContrast ? 0.7 : ScoreHeart.outlineOpacity)
+        let colored = highContrast ? 1.0 : ScoreHeart.coloredOutlineOpacity
         switch (self, phase) {
-        case (_, .over): return .systemRed
+        case (_, .over): return .systemRed.withAlphaComponent(colored)
         case (.quiet, .working): return idle
-        case (.quiet, .warning): return .systemOrange
+        case (.quiet, .warning): return .systemOrange.withAlphaComponent(colored)
         case (.signal, .working): return idle
-        case (.signal, .warning): return .systemOrange
-        case (.accent, .working): return .controlAccentColor.withAlphaComponent(highContrast ? 0.8 : 0.45)
-        case (.accent, .warning): return .controlAccentColor
+        case (.signal, .warning): return .systemOrange.withAlphaComponent(colored)
+        case (.accent, .working): return .controlAccentColor.withAlphaComponent(ScoreHeart.outlineOpacity)
+        case (.accent, .warning): return .controlAccentColor.withAlphaComponent(colored)
         case (_, .resting): return idle
         }
     }

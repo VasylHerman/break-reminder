@@ -250,17 +250,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         button.imagePosition = .imageLeading
 
         if counterStyle == .heart {
-            // The heart is the item: fill is the score, color is the state, the outline rings it.
-            // Full label color while working, like every other menu bar glyph.
+            // The heart is the item: a gauge of the weekly score, like the battery icon is a gauge.
+            // It keeps the label color; only the outline ring carries the state.
             button.attributedTitle = NSAttributedString(string: "")
-            let glyphColor: NSColor = phase == .working ? .labelColor : borderColor
-            progressBorder?.ringDiameter = 20
-            button.image = ScoreHeart.canvas(fill: week.adherence ?? 0, color: glyphColor, canvas: 22)
+            button.image = ScoreHeart.canvas(fill: week.adherence ?? 0, color: .labelColor, canvas: 22)
+            progressBorder?.ringDiameter = 21
+            progressBorder?.glyphCanvas = 22
+            let progress: Double? = snapshot.state == .working ? snapshot.currentSeconds / Settings.workLimit : nil
+            progressBorder?.update(progress: progress, style: Settings.outlineStyle, color: borderColor)
+            return
         } else if counterStyle == .hidden {
             // Dot in the state color, with the outline drawn as a ring around it.
             button.attributedTitle = NSAttributedString(string: "")
             progressBorder?.ringDiameter = 16
-            let dot = Self.dotImage(color: phase == .working ? .labelColor : borderColor)
+            progressBorder?.glyphCanvas = 18
+            let dot = Self.dotImage(color: (phase == .working ? NSColor.labelColor : borderColor)
+                                        .withAlphaComponent(ScoreHeart.levelOpacity))
             button.image = heart.map { ScoreHeart.compose(heart: $0, with: dot) } ?? dot
         } else {
             button.image = heart

@@ -6,8 +6,9 @@ and reminds you through Notification Center to take a break.
 - Work time is measured from system-wide keyboard, mouse and trackpad activity.
 - Rest starts after the input has been idle for 5 minutes (configurable). The work counter resets.
 - After 25 minutes of continuous work (configurable) a notification fires with a sound (Submarine by default), then repeats every 10 minutes until you rest.
-- The menu bar item is a heart by default: it fills with the week's on-time share, takes the state
-  color, and the outline rings it. Settings can switch it to a dot, or to the minute counter
+- The menu bar item is a heart by default, drawn as a gauge of the week's on-time share like the
+  battery icon. The outline rings it and carries the state: orange during the warning, red once you
+  are over, gone while you rest. The heart itself keeps the menu bar color. Settings can switch it to a dot, or to the minute counter
   (23, or 1:05 from an hour on, optionally with the unit) wrapped by the outline.
   The default theme is monochrome: the number stays in the menu bar color and the outline
   carries the state, red only once you are over. The Signal theme adds orange for the warning

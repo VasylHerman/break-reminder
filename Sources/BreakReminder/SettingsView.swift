@@ -143,8 +143,8 @@ struct AppearanceSettingsView: View {
     private var caption: String {
         switch currentCounter {
         case .heart:
-            return "The heart fills with this week's on-time share and takes the state color; the outline rings it. "
-                + "The exact time and share are in the menu and the tooltip."
+            return "A gauge of this week's on-time share, like the battery icon. The outline rings it and carries "
+                + "the state: orange during the warning, red once you are over, gone while you rest."
         case .hidden:
             return "A dot in the state color, with the outline as a ring around it. The exact time is in the menu and the tooltip."
         default:

@@ -38,8 +38,8 @@ final class ProgressBorder {
             return
         }
         shape.isHidden = false
-        let glyph = (button?.attributedTitle.length ?? 0) == 0
-        shape.lineWidth = NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast ? 2.5 : (glyph ? 1.75 : 1.5)
+        // One point, like the heart's body and the battery's; heavier only with Increase Contrast.
+        shape.lineWidth = NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast ? 2 : 1
         shape.strokeColor = color.cgColor
         shape.strokeStart = CGFloat(stroke.start)
         shape.strokeEnd = CGFloat(stroke.end)
@@ -49,8 +49,9 @@ final class ProgressBorder {
 
     private var anchor: OutlineStyle.Anchor = .top
 
-    /// Diameter of the ring drawn around the glyph when there are no digits. Set per glyph.
+    /// Diameter of the ring drawn around the glyph when there are no digits, and the glyph's canvas size. Set per glyph.
     var ringDiameter: CGFloat = 14
+    var glyphCanvas: CGFloat = 16
 
     /// Fit the outline around the text, or draw a ring around the dot when there is no text.
     /// The cell reports where it places the title and the image, which accounts for a leading heart.
@@ -60,10 +61,10 @@ final class ProgressBorder {
         let rect: NSRect
         let radius: CGFloat
         if title.length == 0 {
-            // Ring around the dot: the dot sits at the right end of the image.
+            // Ring around the glyph: the glyph canvas sits at the right end of the image, centered in it.
             let d = ringDiameter
             let imageRect = cell?.imageRect(forBounds: button.bounds) ?? button.bounds
-            let dotCenterX = imageRect.maxX - (d + 2) / 2
+            let dotCenterX = imageRect.maxX - glyphCanvas / 2
             rect = NSRect(x: dotCenterX - d / 2, y: (button.bounds.height - d) / 2, width: d, height: d)
                 .insetBy(dx: shape.lineWidth / 2, dy: shape.lineWidth / 2)
             radius = rect.height / 2

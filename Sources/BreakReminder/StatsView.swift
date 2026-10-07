@@ -28,8 +28,8 @@ struct StatsView: View {
 
             // Headline with the score heart, the same glyph as the menu bar.
             HStack(alignment: .top, spacing: 12) {
-                ScoreHeartView(fill: summary.adherence ?? 0, size: 24)
-                    .foregroundStyle(summary.adherence == nil ? Color.secondary : Color.primary)
+                ScoreHeartView(fill: summary.adherence ?? 0, size: 24,
+                               color: summary.adherence == nil ? .secondaryLabelColor : .labelColor)
                     .frame(width: 32, height: 32)
                     .help(summary.adherence.map { "On time \(Int(($0 * 100).rounded()))%" } ?? "No breaks due yet")
                 Text(Stats.headline(period: period, summary: summary, previous: previous, longestStart: longestStart))
