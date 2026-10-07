@@ -335,7 +335,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             glyph: Settings.counterStyle.isGlyph
         )
 
-        var tooltip = "\(description): \(TimeFormat.minutes(snapshot.currentSeconds))"
+        var tooltip = "Break Reminder \(Updater.currentVersion)\n\(description): \(TimeFormat.minutes(snapshot.currentSeconds))"
 
         // Weekly score: a heart beside the counter, or the counter itself.
         let week = Stats.summary(period: .week, history: history, live: snapshot, blockStart: tracker.currentBlockStart)
@@ -443,6 +443,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         pauseItem.submenu = pauseMenu
         menu.addItem(pauseItem)
         menu.addItem(resumeItem)
+        menu.addItem(NSMenuItem(title: "Stats…", action: #selector(openStats), keyEquivalent: "s"))
         menu.addItem(.separator())
 
         for minutes in [25, 30, 45, 60, 90] {
@@ -471,7 +472,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // Own group: macOS decorates "Settings…" with an icon and would indent its neighbours.
         updateItem.isHidden = true
         menu.addItem(updateItem)
-        menu.addItem(NSMenuItem(title: "Stats…", action: #selector(openStats), keyEquivalent: "s"))
         menu.addItem(NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ","))
         menu.addItem(.separator())
 
@@ -487,6 +487,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(feedbackItem)
         menu.addItem(.separator())
 
+        let versionLine = NSMenuItem(title: "Break Reminder \(Updater.currentVersion)", action: nil, keyEquivalent: "")
+        versionLine.isEnabled = false
+        menu.addItem(versionLine)
         menu.addItem(NSMenuItem(title: "Quit Break Reminder", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         return menu
     }

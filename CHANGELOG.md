@@ -3,6 +3,12 @@
 Release notes are taken from this file by the Release workflow: the section whose heading
 matches the tag becomes the GitHub release body.
 
+## 0.20.2
+
+### Changed
+- The menu shows the installed version above Quit, and the menu bar tooltip starts with it.
+- Stats… sits with Reset Work Timer and Pause Reminders.
+
 ## 0.20.1
 
 ### Changed

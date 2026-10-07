@@ -113,6 +113,7 @@ The bundle is ad-hoc signed, which is enough for local use. Nothing is uploaded 
 | Last work block / Last rest | Length of the previous period, for a quick sanity check |
 | Reset Work Timer | Start the current work block from zero. A pending break counts as skipped |
 | Stats… | Opens the window on the Stats tab (⌘S) |
+| Break Reminder x.y.z | Installed version, also first in the menu bar tooltip |
 | Pause Reminders | Silence reminders for 30 minutes, 1 hour, 2 hours or until tomorrow. The counter keeps running. A Resume item appears while paused |
 | Work Limit | 25, 30, 45, 60, 90 minutes, or Custom… which opens Settings |
 | Rest Counts After Idle | 2, 3, 5, 10 minutes, or Custom… which opens Settings |
