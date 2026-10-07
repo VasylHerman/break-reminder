@@ -18,6 +18,16 @@ The only prompt you will see is the standard notification permission dialog on f
 - macOS 13 or newer
 - Xcode (or the Command Line Tools) for the Swift toolchain
 
+## Install with Homebrew
+
+```sh
+brew install vasylherman/tap/break-reminder
+open "$(brew --prefix)/opt/break-reminder/BreakReminder.app"
+```
+
+Homebrew builds the app from source on your Mac, so no notarization or Gatekeeper override
+is needed. To start it at login either use the in-app toggle or `brew services start break-reminder`.
+
 ## Build and run
 
 ```sh
@@ -66,3 +76,7 @@ Sources/BreakReminder/
 Support/Info.plist       bundle metadata (LSUIElement hides the Dock icon)
 build.sh                 build, bundle, run, install
 ```
+
+## License
+
+MIT
