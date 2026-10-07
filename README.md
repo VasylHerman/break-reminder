@@ -25,7 +25,7 @@ and reminds you through Notification Center to take a break.
   to apps with Full Disk Access. After a pause ends, an overdue
   reminder waits a 2 minute grace period.
 
-- Stats (⌘S from the menu): focused and rest time, longest block, breaks taken of due, on-time share,
+- Stats, the first tab of the Settings window (⌘S from the menu): focused and rest time, longest block, breaks taken of due, on-time share,
   good days and streak, for today, the calendar week and the calendar month. An optional heart
   next to the counter fills with the week's on-time share. A break is on time when
   a rest starts within 5 minutes of the limit, half when within 15. Breaks held by Smart Pause are
@@ -78,11 +78,11 @@ The bundle is ad-hoc signed, which is enough for local use. Nothing is uploaded 
 | Breaks this week | Breaks taken of breaks due in the calendar week |
 | Last work block / Last rest | Length of the previous period, for a quick sanity check |
 | Reset Work Timer | Start the current work block from zero. A pending break counts as skipped |
-| Stats… | Opens the Stats window (⌘S) |
+| Stats… | Opens the window on the Stats tab (⌘S) |
 | Pause Reminders | Silence reminders for 30 minutes, 1 hour, 2 hours or until tomorrow. The counter keeps running. A Resume item appears while paused |
 | Work Limit | 25, 30, 45, 60, 90 minutes, or Custom… which opens Settings |
 | Rest Counts After Idle | 2, 3, 5, 10 minutes, or Custom… which opens Settings |
-| Settings… | Opens the Settings window (⌘,) |
+| Settings… | Opens the window on the General tab (⌘,) |
 | Feedback | Request a Feature and Report a Bug open prefilled GitHub issue forms with your app version, macOS version, install method, settings and current state. Also links to Release Notes and the project page |
 
 ## Settings
@@ -90,7 +90,7 @@ The bundle is ad-hoc signed, which is enough for local use. Nothing is uploaded 
 | Tab | Options |
 | --- | --- |
 | General | Launch at login. Work limit, rest threshold and warn-before minutes as steppers |
-| Appearance | Live preview, theme (Quiet, Signal, Accent), counter (number with unit, number, dot, heart), outline mode, weekly score heart beside the counter, and under Advanced the outline direction and blink |
+| Appearance | Live preview, theme (Quiet, Signal, Accent), show as (minutes with unit, minutes, dot, heart), outline mode, weekly score heart beside it, and under Advanced the outline direction and blink |
 | Reminders | Repeat interval, editable title and message with `{minutes}` and `{rest}` placeholders, sound picker that previews on change, Send Test Notification |
 | Smart Pause | Master switch, the three triggers with a live "Now" indicator when detected, and the grace period |
 | About | Version, install method, feedback and project links, copy the Homebrew install command, Reset All Settings |
@@ -122,10 +122,10 @@ Sources/BreakReminder/
   SmartPause.swift       call, screen share and fullscreen detection
   History.swift          on-disk daily totals and break events with retention
   Stats.swift            day, week and month aggregation
-  StatsView.swift        Stats window content
-  StatsWindowController.swift
+  StatsView.swift        Stats pane
   Settings.swift         UserDefaults-backed options
   SettingsView.swift     SwiftUI settings panes (General, Appearance, Reminders, Smart Pause, About)
+  SettingsWindowController.swift  one window with Stats first, then the settings panes
   Theme.swift            curated menu bar color themes
   MenuBarPreview.swift   animated preview of the menu bar item
   ProgressBorder.swift   outline layer around the counter

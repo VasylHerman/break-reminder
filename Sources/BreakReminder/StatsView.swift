@@ -10,35 +10,34 @@ struct StatsView: View {
     private let refresh = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
 
     var body: some View {
-        VStack(spacing: 16) {
-            Picker("Period", selection: $period) {
-                ForEach(Stats.Period.allCases) { Text($0.label).tag($0) }
+        Form {
+            Section {
+                Picker("Period", selection: $period) {
+                    ForEach(Stats.Period.allCases) { Text($0.label).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
             }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-
-            Grid(alignment: .leading, horizontalSpacing: 24, verticalSpacing: 10) {
+            Section("Time") {
                 row("Focused", TimeFormat.minutes(summary.work))
                 row("Resting", TimeFormat.minutes(summary.rest))
                 row("Longest block", TimeFormat.minutes(summary.longestWork))
-                Divider().gridCellUnsizedAxes(.horizontal)
-                row("Breaks taken", summary.due > 0 ? "\(summary.taken) of \(summary.due)" : "–")
+            }
+            Section("Breaks") {
+                row("Taken", summary.due > 0 ? "\(summary.taken) of \(summary.due)" : "–")
                 row("On time", summary.adherence.map { "\(Int(($0 * 100).rounded()))%" } ?? "–")
                 if period != .day {
                     row("Good days", "\(summary.goodDays) of \(summary.activeDays)")
                 }
                 row("Streak", summary.streak == 1 ? "1 day" : "\(summary.streak) days")
+                Text(explanation)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
-            .font(.body)
-
-            Text(explanation)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 340)
         }
-        .padding(24)
-        .frame(width: 400)
+        .formStyle(.grouped)
+        .scrollDisabled(true)
+        .fixedSize(horizontal: false, vertical: true)
         .onAppear(perform: reload)
         .onChange(of: period) { _ in reload() }
         .onReceive(refresh) { _ in reload() }
@@ -52,11 +51,11 @@ struct StatsView: View {
         }
     }
 
-    @ViewBuilder
     private func row(_ label: String, _ value: String) -> some View {
-        GridRow {
-            Text(label).foregroundStyle(.secondary)
-            Text(value).monospacedDigit().frame(maxWidth: .infinity, alignment: .trailing)
+        HStack {
+            Text(label)
+            Spacer()
+            Text(value).monospacedDigit().foregroundStyle(.secondary)
         }
     }
 

@@ -109,14 +109,14 @@ struct AppearanceSettingsView: View {
                     .foregroundStyle(.secondary)
             }
             Section("Menu bar item") {
-                Picker("Counter", selection: $counterStyle) {
+                Picker("Show as", selection: $counterStyle) {
                     ForEach(CounterStyle.allCases) { Text($0.label).tag($0.rawValue) }
                 }
                 Picker("Outline shows", selection: outlineMode) {
                     ForEach(OutlineStyle.Mode.allCases) { Text($0.label).tag($0) }
                 }
                 if currentCounter != .heart {
-                    Toggle("Weekly score heart beside the counter", isOn: $showScore)
+                    Toggle("Weekly score heart beside it", isOn: $showScore)
                 }
                 Text(caption)
                     .font(.caption)
@@ -149,8 +149,8 @@ struct AppearanceSettingsView: View {
             return "A dot in the state color, with the outline as a ring around it. The exact time is in the menu and the tooltip."
         default:
             return showScore
-                ? "The heart beside the counter fills with this week's on-time share, shown once a break has been due."
-                : "The outline wraps the number and closes in red once the limit is reached."
+                ? "The heart beside the minutes fills with this week's on-time share, shown once a break has been due."
+                : "The outline wraps the minutes and closes in red once the limit is reached."
         }
     }
 

@@ -317,8 +317,8 @@ enum CounterStyle: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var label: String {
         switch self {
-        case .numberWithUnit: return "Number with unit"
-        case .number: return "Number"
+        case .numberWithUnit: return "Minutes with unit"
+        case .number: return "Minutes"
         case .hidden: return "Dot"
         case .heart: return "Heart"
         }

@@ -13,7 +13,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var progressBorder: ProgressBorder?
     private var lastSnapshot: ActivityTracker.Snapshot?
     private lazy var settingsWindow = SettingsWindowController()
-    private lazy var statsWindow = StatsWindowController()
     private let history = History.shared
     private var dueRecordedFor: Date?
     private var appliedSettings = Settings.signature
@@ -383,7 +382,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func openStats() {
-        statsWindow.show()
+        settingsWindow.show(pane: .stats)
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -391,7 +390,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func openSettings() {
-        settingsWindow.show()
+        settingsWindow.show(pane: .general)
     }
 
     @objc private func setWorkLimit(_ sender: NSMenuItem) {
