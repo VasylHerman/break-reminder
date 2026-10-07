@@ -6,6 +6,10 @@ and reminds you through Notification Center to take a break.
 - Work time is measured from system-wide keyboard, mouse and trackpad activity.
 - Rest starts after the input has been idle for 5 minutes (configurable). The work counter resets.
 - After 25 minutes of continuous work (configurable) a notification fires with a sound (Submarine by default), then repeats every 10 minutes until you rest.
+- Each reminder suggests one concrete activity, like "Drink some water" or "Look out the window",
+  picked from categories you can turn off (move, eyes, drink, air, breathe, people, enjoy) plus your own
+  lines such as medication. Never the same as the last two, outdoor ones only in daylight, coffee
+  not after 16:00, "Dance" only while a music app is playing. Repeats keep the activity and shorten the text. Or use your own title and message.
 - The menu bar item is a heart by default, drawn as a gauge of the week's on-time share like the
   battery icon. The arc around it shows the block in the neutral tone; there are no state colors in this
   mode, the blink carries the warning. The arc is gone while you rest. Settings can switch it to a dot, or to the minute counter
@@ -115,7 +119,7 @@ The bundle is ad-hoc signed, which is enough for local use. Nothing is uploaded 
 | --- | --- |
 | General | Launch at login. Work limit, rest threshold and warn-before minutes as steppers |
 | Appearance | Live preview, theme (Quiet, Signal, Accent), show as (minutes with unit, minutes, dot, heart), outline mode, weekly score heart beside it, and under Advanced the outline direction and blink |
-| Reminders | Firmness (Automatic, Gentle, Normal, Firm), repeat interval, editable title and message with `{minutes}` and `{rest}` placeholders, sound picker that previews on change, Send Test Notification |
+| Reminders | Firmness (Automatic, Gentle, Normal, Firm), repeat interval, suggested activities with category toggles and your own lines, or editable title and message with `{minutes}` and `{rest}` placeholders, sound picker that previews on change, Send Test Notification |
 | Smart Pause | Master switch, the three triggers with a live "Now" indicator when detected, and the grace period |
 | About | Version, install method, feedback and project links, copy the Homebrew install command, Reset All Settings |
 
@@ -143,6 +147,7 @@ Sources/BreakReminder/
   AppDelegate.swift      status item, menu, polling, reminder logic
   ActivityTracker.swift  work/rest state machine on top of system idle time
   Notifier.swift         Notification Center banners (osascript fallback for `swift run`)
+  BreakActivities.swift  suggested break activities and the picking rules
   SmartPause.swift       call, screen share and fullscreen detection
   Firmness.swift         firmness levels and the automatic mapping from the weekly score
   History.swift          on-disk daily totals and break events with retention

@@ -183,6 +183,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func remindIfNeeded(_ snapshot: ActivityTracker.Snapshot, now: Date) {
         guard snapshot.state == .working, snapshot.currentSeconds >= Settings.workLimit else { return }
         if remindersHeld { return }
+        let repeated = tracker.lastReminder != nil
         if let last = tracker.lastReminder {
             // Repeats depend on the firmness level; Gentle sends one reminder per block.
             guard let interval = Settings.firmness.repeatInterval(normal: Settings.remindEvery),
@@ -191,7 +192,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         tracker.lastReminder = now
 
-        notifier.sendBreakReminder(minutes: Int(snapshot.currentSeconds / 60))
+        notifier.sendBreakReminder(minutes: Int(snapshot.currentSeconds / 60), repeated: repeated)
     }
 
     /// UserDefaults also changes on every tracker persist, so only react when a setting really changed.

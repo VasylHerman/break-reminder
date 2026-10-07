@@ -217,6 +217,10 @@ struct ReminderSettingsView: View {
     @AppStorage(Settings.Key.workLimit) private var workLimit = 25
     @AppStorage(Settings.Key.reminderTitle) private var title = Settings.defaultReminderTitle
     @AppStorage(Settings.Key.reminderBody) private var body_ = Settings.defaultReminderBody
+    @AppStorage(Settings.Key.reminderStyle) private var reminderStyle = "activities"
+    @State private var categories = Settings.activityCategories
+    @State private var customLines = Settings.customActivities.joined(separator: "\n")
+    @State private var example: (title: String, body: String)?
     @AppStorage(Settings.Key.firmnessMode) private var firmnessMode = FirmnessMode.automatic.rawValue
     @AppStorage(Settings.Key.autoFirmness) private var autoFirmness = Firmness.normal.rawValue
     @State private var testSent = false
@@ -250,21 +254,71 @@ struct ReminderSettingsView: View {
                 StepperRow(label: "Repeat while over the limit every", value: "\(remindEvery) min",
                            number: $remindEvery, range: 1...120)
                     .disabled(currentLevel == .gentle)
+                Picker("Text", selection: $reminderStyle) {
+                    Text("Suggest an activity").tag("activities")
+                    Text("My own text").tag("custom")
+                }
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Title")
                     TextField("", text: $title, prompt: Text(Settings.defaultReminderTitle))
                         .textFieldStyle(.roundedBorder)
                         .labelsHidden()
                 }
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Message")
-                    TextField("", text: $body_, prompt: Text(Settings.defaultReminderBody), axis: .vertical)
-                        .textFieldStyle(.roundedBorder)
-                        .labelsHidden()
-                        .lineLimit(2...4)
-                    Text("{minutes} is the length of the work block, {rest} the rest threshold.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                if reminderStyle == "custom" {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Message")
+                        TextField("", text: $body_, prompt: Text(Settings.defaultReminderBody), axis: .vertical)
+                            .textFieldStyle(.roundedBorder)
+                            .labelsHidden()
+                            .lineLimit(2...4)
+                        Text("{minutes} is the length of the work block, {rest} the rest threshold.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                } else {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Activities")
+                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], alignment: .leading, spacing: 4) {
+                            ForEach(BreakActivities.Category.allCases) { category in
+                                Toggle(category.label, isOn: Binding(
+                                    get: { categories.contains(category) },
+                                    set: { on in
+                                        if on { categories.insert(category) } else { categories.remove(category) }
+                                        Settings.activityCategories = categories
+                                    }
+                                ))
+                                .toggleStyle(.checkbox)
+                            }
+                        }
+                        Text("One activity per reminder, never the same as the last two. Outdoor ones only in daylight, coffee not after 16:00. "
+                             + "Repeats keep the activity and shorten the text.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    if categories.contains(.custom) {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("My own, one per line")
+                            TextEditor(text: $customLines)
+                                .font(.body)
+                                .frame(height: 64)
+                                .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.primary.opacity(0.15)))
+                                .onChange(of: customLines) { text in
+                                    Settings.customActivities = text.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+                                }
+                            Text("For example: time for your medication, water the plants, feed the cat.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    if let example {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(example.title).font(.callout.weight(.semibold))
+                            Text(example.body).font(.callout).foregroundStyle(.secondary)
+                        }
+                        .padding(8)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 6))
+                    }
                 }
                 Picker("Sound", selection: $sound) {
                     Text("Off").tag("")
@@ -278,11 +332,14 @@ struct ReminderSettingsView: View {
                     Button("Restore Default Text") {
                         title = Settings.defaultReminderTitle
                         body_ = Settings.defaultReminderBody
+                        categories = Set(BreakActivities.Category.allCases)
+                        Settings.activityCategories = categories
                     }
                     .controlSize(.small)
                     Spacer()
                     Button(testSent ? "Sent" : "Send Test Notification") {
-                        Notifier.shared.sendBreakReminder(minutes: workLimit)
+                        example = Notifier.reminderText(minutes: workLimit, repeated: false)
+                        if let example { Notifier.shared.send(title: example.title, body: example.body, sound: Settings.notificationSound) }
                         testSent = true
                         DispatchQueue.main.asyncAfter(deadline: .now() + 2) { testSent = false }
                     }

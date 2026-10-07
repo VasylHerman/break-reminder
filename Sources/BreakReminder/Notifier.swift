@@ -72,19 +72,35 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
 
     /// `sound` is a macOS alert sound name such as "Glass"; nil or empty means silent.
     /// The reminder shown after `minutes` of continuous work, also used for the test button.
-    func sendBreakReminder(minutes: Int) {
+    /// `repeated` is true for the second and later reminders of the same block, which get shorter text.
+    func sendBreakReminder(minutes: Int, repeated: Bool = false) {
+        let (title, body) = Self.reminderText(minutes: minutes, repeated: repeated)
+        send(title: title, body: body, sound: Settings.notificationSound)
+    }
+
+    /// Title and body for a reminder: a suggested activity, or the user's own templates.
+    static func reminderText(minutes: Int, repeated: Bool) -> (title: String, body: String) {
         func fill(_ template: String) -> String {
             template
                 .replacingOccurrences(of: "{minutes}", with: String(minutes))
                 .replacingOccurrences(of: "{rest}", with: String(Settings.restThresholdMinutes))
         }
-        let title = fill(Settings.reminderTitle).trimmingCharacters(in: .whitespaces)
-        let body = fill(Settings.reminderBody).trimmingCharacters(in: .whitespaces)
-        send(
-            title: title.isEmpty ? Settings.defaultReminderTitle : title,
-            body: body,
-            sound: Settings.notificationSound
-        )
+        let headline = fill(Settings.reminderTitle).trimmingCharacters(in: .whitespaces)
+        let title = headline.isEmpty ? Settings.defaultReminderTitle : headline
+
+        if Settings.suggestsActivities,
+           let activity = BreakActivities.pick(enabled: Settings.activityCategories, custom: Settings.customActivities,
+                                               recent: Settings.recentActivities) {
+            Settings.recentActivities = Settings.recentActivities + [activity.title]
+            if repeated {
+                let over = max(0, minutes - Settings.workLimitMinutes)
+                let since = over > 0 ? "\(over) minutes over." : "Still here."
+                return (title: "\(title) · \(activity.title)", body: "\(since) \(activity.title), then back.")
+            }
+            let body = activity.body.isEmpty ? "\(minutes) minutes in. Time for it." : activity.body
+            return (title: "\(title) · \(activity.title)", body: body)
+        }
+        return (title: title, body: fill(Settings.reminderBody).trimmingCharacters(in: .whitespaces))
     }
 
     func send(title: String, body: String, sound: String?) {

@@ -13,6 +13,10 @@ enum Settings {
         static let pausedUntil = "remindersPausedUntil"
         static let reminderTitle = "reminderTitle"
         static let reminderBody = "reminderBody"
+        static let reminderStyle = "reminderStyle"           // "activities" or "custom"
+        static let activityCategories = "activityCategories"
+        static let customActivities = "customActivities"
+        static let recentActivities = "recentActivities"
         static let warnBlink = "warnBlink"
         static let carryOverRest = "carryOverRest"
         static let carrySeconds = "carrySeconds"
@@ -61,6 +65,9 @@ enum Settings {
             Key.warnBefore: 5,
             Key.reminderTitle: defaultReminderTitle,
             Key.reminderBody: defaultReminderBody,
+            Key.reminderStyle: "activities",
+            Key.activityCategories: BreakActivities.Category.allCases.map(\.rawValue),
+            Key.customActivities: [String](),
             Key.warnBlink: true,
             Key.carryOverRest: false,
             Key.beatNormal: 10,
@@ -88,7 +95,8 @@ enum Settings {
     /// Removes every user setting so the registered defaults apply again. Timer state is untouched.
     static func resetAll() {
         for key in [Key.workLimit, Key.restThreshold, Key.remindEvery, Key.sound, Key.warnBefore,
-                    Key.pausedUntil, Key.reminderTitle, Key.reminderBody, Key.warnBlink,
+                    Key.pausedUntil, Key.reminderTitle, Key.reminderBody, Key.reminderStyle,
+                    Key.activityCategories, Key.customActivities, Key.recentActivities, Key.warnBlink,
                     Key.carryOverRest, Key.carrySeconds,
                     Key.beatNormal, Key.beatWarning, Key.beatOver, Key.beatWhileWorking,
                     Key.beatBody, Key.beatLevel, Key.beatArc,
@@ -132,6 +140,26 @@ enum Settings {
     static var reminderBody: String {
         get { defaults.string(forKey: Key.reminderBody) ?? defaultReminderBody }
         set { defaults.set(newValue, forKey: Key.reminderBody) }
+    }
+
+    /// True when reminders suggest an activity; false for the user's own title and message.
+    static var suggestsActivities: Bool {
+        get { (defaults.string(forKey: Key.reminderStyle) ?? "activities") == "activities" }
+        set { defaults.set(newValue ? "activities" : "custom", forKey: Key.reminderStyle) }
+    }
+    static var activityCategories: Set<BreakActivities.Category> {
+        get { Set((defaults.stringArray(forKey: Key.activityCategories) ?? []).compactMap(BreakActivities.Category.init)) }
+        set { defaults.set(newValue.map(\.rawValue).sorted(), forKey: Key.activityCategories) }
+    }
+    /// The user's own activity lines, one per element.
+    static var customActivities: [String] {
+        get { defaults.stringArray(forKey: Key.customActivities) ?? [] }
+        set { defaults.set(newValue, forKey: Key.customActivities) }
+    }
+    /// Titles of the last two activities, so the same one is not suggested twice in a row.
+    static var recentActivities: [String] {
+        get { defaults.stringArray(forKey: Key.recentActivities) ?? [] }
+        set { defaults.set(Array(newValue.suffix(2)), forKey: Key.recentActivities) }
     }
 
     /// Reminders are silenced until this date. Nil or past means active.
