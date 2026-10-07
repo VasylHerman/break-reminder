@@ -25,7 +25,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         previousState = tracker.state
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        statusItem.button?.imagePosition = .imageLeading
         statusItem.menu = buildMenu()
 
         notifier.requestAuthorization()
@@ -70,28 +69,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         guard let button = statusItem.button else { return }
         let time = Self.format(snapshot.currentSeconds)
 
-        let symbol: String
         let color: NSColor
         let description: String
         switch snapshot.state {
         case .working where snapshot.currentSeconds >= Settings.workLimit:
-            symbol = "exclamationmark.triangle.fill"
             color = .systemRed
             description = "Over work limit"
         case .working:
-            symbol = "keyboard"
             color = .labelColor
             description = "Working"
         case .resting:
-            symbol = "cup.and.saucer.fill"
-            color = .labelColor
+            color = .systemGreen
             description = "Resting"
         }
 
-        button.image = NSImage(systemSymbolName: symbol, accessibilityDescription: description)
+        // Monospaced digits keep the item from jittering as the counter changes.
+        let font = NSFont.monospacedDigitSystemFont(ofSize: NSFont.menuBarFont(ofSize: 0).pointSize, weight: .medium)
         button.attributedTitle = NSAttributedString(
-            string: " " + time,
-            attributes: [.foregroundColor: color, .font: NSFont.menuBarFont(ofSize: 0)]
+            string: time,
+            attributes: [.foregroundColor: color, .font: font]
         )
         button.toolTip = "\(description): \(time)"
     }

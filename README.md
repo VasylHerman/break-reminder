@@ -6,8 +6,8 @@ and reminds you through Notification Center to take a break.
 - Work time is measured from system-wide keyboard, mouse and trackpad activity.
 - Rest starts after the input has been idle for 5 minutes (configurable). The work counter resets.
 - After 45 minutes of continuous work (configurable) a notification fires, then repeats every 10 minutes until you rest.
-- The menu bar shows the running counter: a keyboard icon while working, a cup while resting,
-  and a red warning once you are over the limit.
+- The menu bar shows a plain minute counter, colored by state: default while working,
+  red once you are over the limit, green while resting.
 
 No Accessibility or Input Monitoring permission is needed. The app only reads the system idle
 time (`CGEventSource.secondsSinceLastEventType`), never individual keystrokes or pointer events.
