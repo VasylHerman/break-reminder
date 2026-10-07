@@ -10,6 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var lastBlink = Date.distantPast
     private let notifier = Notifier.shared
     private var tracker: ActivityTracker!
+    private var progressBorder: ProgressBorder?
     private var lastSnapshot: ActivityTracker.Snapshot?
     private lazy var settingsWindow = SettingsWindowController()
     private var appliedSettings = Settings.signature
@@ -29,6 +30,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         statusItem.menu = buildMenu()
+        if let button = statusItem.button {
+            progressBorder = ProgressBorder(button: button)
+        }
 
         notifier.requestAuthorization()
         tick()
@@ -116,22 +120,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func updateStatusItem(_ snapshot: ActivityTracker.Snapshot) {
         guard let button = statusItem.button else { return }
-        let time = TimeFormat.minutes(snapshot.currentSeconds)
+        let time = TimeFormat.counter(snapshot.currentSeconds, showUnit: Settings.showUnit)
 
         let color: NSColor
+        let borderColor: NSColor
         let description: String
         switch snapshot.state {
         case .working where snapshot.currentSeconds >= Settings.workLimit:
             color = .systemRed
+            borderColor = .systemRed
             description = "Over work limit"
         case .working where Settings.warnBefore > 0 && snapshot.currentSeconds >= Settings.workLimit - Settings.warnBefore:
             color = .systemOrange
+            borderColor = .systemOrange
             description = "Break coming up"
         case .working:
             color = .labelColor
+            borderColor = .tertiaryLabelColor
             description = "Working"
         case .resting:
             color = .systemGreen
+            borderColor = .systemGreen
             description = "Resting"
         }
 
@@ -140,6 +149,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             attributes: [.foregroundColor: color, .font: Self.counterFont]
         )
         button.toolTip = "\(description): \(time)"
+
+        // Outline around the counter shows the block's progress; hidden while resting.
+        let progress: Double? = snapshot.state == .working ? snapshot.currentSeconds / Settings.workLimit : nil
+        progressBorder?.update(progress: progress, style: Settings.outlineStyle, color: borderColor)
     }
 
     /// The regular menu bar font, same as the clock, with monospaced digits so the item does not jitter.

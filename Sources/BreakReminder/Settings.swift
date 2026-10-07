@@ -14,6 +14,8 @@ enum Settings {
         static let reminderTitle = "reminderTitle"
         static let reminderBody = "reminderBody"
         static let warnBlink = "warnBlink"
+        static let outlineStyle = "outlineStyle"
+        static let showUnit = "showUnit"
     }
 
     static let defaultReminderTitle = "Time for a break"
@@ -37,6 +39,8 @@ enum Settings {
             Key.reminderTitle: defaultReminderTitle,
             Key.reminderBody: defaultReminderBody,
             Key.warnBlink: true,
+            Key.outlineStyle: OutlineStyle.unwindFromTop.rawValue,
+            Key.showUnit: false,
         ])
     }
 
@@ -83,6 +87,18 @@ enum Settings {
         set { defaults.set(newValue, forKey: Key.pausedUntil) }
     }
 
+    /// How the outline around the counter shows the block's progress.
+    static var outlineStyle: OutlineStyle {
+        get { OutlineStyle(rawValue: defaults.string(forKey: Key.outlineStyle) ?? "") ?? .unwindFromTop }
+        set { defaults.set(newValue.rawValue, forKey: Key.outlineStyle) }
+    }
+
+    /// Show the unit after the counter in the menu bar ("23m" instead of "23").
+    static var showUnit: Bool {
+        get { defaults.bool(forKey: Key.showUnit) }
+        set { defaults.set(newValue, forKey: Key.showUnit) }
+    }
+
     /// Blink the menu bar counter during the warning window and past the limit.
     static var warnBlink: Bool {
         get { defaults.bool(forKey: Key.warnBlink) }
@@ -97,11 +113,49 @@ enum Settings {
 
     /// Cheap fingerprint of every user setting, used to detect real changes.
     static var signature: String {
-        "\(workLimitMinutes)|\(restThresholdMinutes)|\(warnBeforeMinutes)|\(remindEveryMinutes)|\(notificationSound)"
+        "\(workLimitMinutes)|\(restThresholdMinutes)|\(warnBeforeMinutes)|\(remindEveryMinutes)|\(notificationSound)|\(outlineStyle.rawValue)|\(showUnit)"
     }
 
     static var workLimit: TimeInterval { TimeInterval(workLimitMinutes * 60) }
     static var warnBefore: TimeInterval { TimeInterval(warnBeforeMinutes * 60) }
     static var restThreshold: TimeInterval { TimeInterval(restThresholdMinutes * 60) }
     static var remindEvery: TimeInterval { TimeInterval(remindEveryMinutes * 60) }
+}
+
+/// Outline styles around the menu bar counter. All of them close fully in red past the limit.
+enum OutlineStyle: String, CaseIterable, Identifiable {
+    case off
+    /// Time spent: grows clockwise from the top.
+    case fillClockwise
+    /// Time left: the gap opens at the top and grows clockwise.
+    case unwindFromTop
+    /// Time left: the far end retreats counterclockwise toward the top.
+    case retreatToTop
+    /// Time left: shrinks from both sides toward the bottom.
+    case shrinkToBottom
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .off: return "Off"
+        case .fillClockwise: return "Time spent, fills clockwise"
+        case .unwindFromTop: return "Time left, unwinds from the top"
+        case .retreatToTop: return "Time left, retreats to the top"
+        case .shrinkToBottom: return "Time left, shrinks to the bottom"
+        }
+    }
+
+    /// Visible stroke range (0 = top center, clockwise to 1) for a block `progress` of 0...1.
+    func strokeRange(progress: Double) -> (start: Double, end: Double)? {
+        let spent = min(max(progress, 0), 1)
+        let left = 1 - spent
+        switch self {
+        case .off: return nil
+        case .fillClockwise: return (0, spent)
+        case .unwindFromTop: return (spent, 1)
+        case .retreatToTop: return (0, left)
+        case .shrinkToBottom: return (0.5 - left / 2, 0.5 + left / 2)
+        }
+    }
 }

@@ -68,6 +68,15 @@ enum Feedback {
 }
 
 enum TimeFormat {
+    /// Menu bar counter: "23" for minutes and "1:05" from an hour on, or "23m" and "1h 05m" with the unit.
+    static func counter(_ seconds: TimeInterval, showUnit: Bool) -> String {
+        if showUnit { return minutes(seconds) }
+        let total = Int(seconds) / 60
+        let hours = total / 60
+        let minutes = total % 60
+        return hours > 0 ? String(format: "%d:%02d", hours, minutes) : "\(minutes)"
+    }
+
     /// "23m" or "1h 05m".
     static func minutes(_ seconds: TimeInterval) -> String {
         let total = Int(seconds) / 60

@@ -6,9 +6,12 @@ and reminds you through Notification Center to take a break.
 - Work time is measured from system-wide keyboard, mouse and trackpad activity.
 - Rest starts after the input has been idle for 5 minutes (configurable). The work counter resets.
 - After 45 minutes of continuous work (configurable) a notification fires with a sound (Glass by default), then repeats every 10 minutes until you rest.
-- The menu bar shows a plain minute counter, colored by state: default while working,
+- The menu bar shows a plain minute counter (23, or 1:05 from an hour on; a unit can be enabled in Settings), colored by state: default while working,
   orange in the last 5 minutes before the limit (configurable), red once you are over it,
   green while resting.
+- A thin outline around the counter shows the block's progress. By default it is full at the
+  start and unwinds from the top as time runs out; Settings offers two other shrinking styles,
+  a fill-up style, or Off. Past the limit the outline closes in red.
 - During the warning the counter blinks, and the pace follows the minutes left: every 5 seconds
   at 5 minutes, every second at 1 minute and past the limit. Can be turned off in Settings.
 
@@ -67,7 +70,7 @@ The bundle is ad-hoc signed, which is enough for local use. Nothing is uploaded 
 
 | Tab | Options |
 | --- | --- |
-| General | Launch at login. Work limit, rest threshold and warn-before minutes as steppers. Blink toggle for the warning |
+| General | Launch at login. Work limit, rest threshold and warn-before minutes as steppers. Outline style, minutes unit and blink toggle for the menu bar |
 | Reminders | Repeat interval, editable title and message with `{minutes}` and `{rest}` placeholders, sound picker that previews on change, Send Test Notification |
 | About | Version, install method, feedback and project links, copy the Homebrew install command |
 

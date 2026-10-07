@@ -28,6 +28,8 @@ struct GeneralSettingsView: View {
     @AppStorage(Settings.Key.restThreshold) private var restThreshold = 5
     @AppStorage(Settings.Key.warnBefore) private var warnBefore = 5
     @AppStorage(Settings.Key.warnBlink) private var warnBlink = true
+    @AppStorage(Settings.Key.outlineStyle) private var outlineStyle = OutlineStyle.unwindFromTop.rawValue
+    @AppStorage(Settings.Key.showUnit) private var showUnit = false
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
     @State private var launchAtLoginError: String?
 
@@ -45,12 +47,30 @@ struct GeneralSettingsView: View {
                 StepperRow(label: "Rest counts after idle", value: "\(restThreshold) min", number: $restThreshold, range: 1...60)
                 StepperRow(label: "Warn before limit", value: warnBefore == 0 ? "Off" : "\(warnBefore) min",
                            number: $warnBefore, range: 0...60)
+                Text("The counter turns orange when the warning starts and red once the limit is reached. "
+                     + "Rest begins after the keyboard, mouse and trackpad have been idle for the rest threshold.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Section("Menu bar") {
+                MenuBarPreview(
+                    style: OutlineStyle(rawValue: outlineStyle) ?? .unwindFromTop,
+                    showUnit: showUnit,
+                    blink: warnBlink,
+                    workLimit: workLimit,
+                    warnBefore: warnBefore
+                )
+                Picker("Outline", selection: $outlineStyle) {
+                    ForEach(OutlineStyle.allCases) { style in
+                        Text(style.label).tag(style.rawValue)
+                    }
+                }
+                Toggle("Show minutes unit (23m instead of 23)", isOn: $showUnit)
                 Toggle("Blink the counter during the warning", isOn: $warnBlink)
                     .disabled(warnBefore == 0)
-                Text("The counter turns orange when the warning starts and red once the limit is reached. "
+                Text("The outline closes in red once the limit is reached. "
                      + "While blinking, the pace follows the minutes left: every 5 seconds at 5 minutes, "
-                     + "every second at 1 minute and past the limit. "
-                     + "Rest begins after the keyboard, mouse and trackpad have been idle for the rest threshold.")
+                     + "every second at 1 minute and past the limit.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
