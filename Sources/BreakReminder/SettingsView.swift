@@ -24,12 +24,9 @@ struct StepperRow: View {
 }
 
 struct GeneralSettingsView: View {
-    @AppStorage(Settings.Key.workLimit) private var workLimit = 45
+    @AppStorage(Settings.Key.workLimit) private var workLimit = 25
     @AppStorage(Settings.Key.restThreshold) private var restThreshold = 5
     @AppStorage(Settings.Key.warnBefore) private var warnBefore = 5
-    @AppStorage(Settings.Key.warnBlink) private var warnBlink = true
-    @AppStorage(Settings.Key.outlineStyle) private var outlineStyle = OutlineStyle.leftClockwise.rawValue
-    @AppStorage(Settings.Key.showUnit) private var showUnit = false
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
     @State private var launchAtLoginError: String?
 
@@ -49,34 +46,6 @@ struct GeneralSettingsView: View {
                            number: $warnBefore, range: 0...60)
                 Text("The counter turns orange when the warning starts and red once the limit is reached. "
                      + "Rest begins after the keyboard, mouse and trackpad have been idle for the rest threshold.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            Section("Menu bar") {
-                MenuBarPreview(
-                    style: OutlineStyle(stored: outlineStyle),
-                    showUnit: showUnit,
-                    blink: warnBlink,
-                    workLimit: workLimit,
-                    warnBefore: warnBefore
-                )
-                Picker("Outline", selection: $outlineStyle) {
-                    Text(OutlineStyle.off.label).tag(OutlineStyle.off.rawValue)
-                    Divider()
-                    ForEach(OutlineStyle.allCases.filter { $0 != .off && !$0.isTimeLeft }) { style in
-                        Text(style.label).tag(style.rawValue)
-                    }
-                    Divider()
-                    ForEach(OutlineStyle.allCases.filter { $0.isTimeLeft }) { style in
-                        Text(style.label).tag(style.rawValue)
-                    }
-                }
-                Toggle("Show minutes unit (23m instead of 23)", isOn: $showUnit)
-                Toggle("Blink the counter during the warning", isOn: $warnBlink)
-                    .disabled(warnBefore == 0)
-                Text("The outline closes in red once the limit is reached. "
-                     + "While blinking, the pace follows the minutes left: every 5 seconds at 5 minutes, "
-                     + "every second at 1 minute and past the limit.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -101,10 +70,86 @@ struct GeneralSettingsView: View {
     }
 }
 
+struct AppearanceSettingsView: View {
+    @AppStorage(Settings.Key.workLimit) private var workLimit = 25
+    @AppStorage(Settings.Key.warnBefore) private var warnBefore = 5
+    @AppStorage(Settings.Key.theme) private var theme = Theme.quiet.rawValue
+    @AppStorage(Settings.Key.outlineStyle) private var outlineStyle = OutlineStyle.spentClockwise.rawValue
+    @AppStorage(Settings.Key.showUnit) private var showUnit = false
+    @AppStorage(Settings.Key.warnBlink) private var warnBlink = true
+    @State private var advancedExpanded = false
+
+    private var currentTheme: Theme { Theme(rawValue: theme) ?? .quiet }
+    private var currentStyle: OutlineStyle { OutlineStyle(stored: outlineStyle) }
+
+    var body: some View {
+        Form {
+            Section {
+                MenuBarPreview(
+                    theme: currentTheme,
+                    style: currentStyle,
+                    showUnit: showUnit,
+                    blink: warnBlink,
+                    workLimit: workLimit,
+                    warnBefore: warnBefore
+                )
+            }
+            Section("Theme") {
+                Picker("Theme", selection: $theme) {
+                    ForEach(Theme.allCases) { Text($0.label).tag($0.rawValue) }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                Text(currentTheme.summary)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Section("Outline") {
+                Picker("Outline shows", selection: outlineMode) {
+                    ForEach(OutlineStyle.Mode.allCases) { Text($0.label).tag($0) }
+                }
+                DisclosureGroup("Advanced", isExpanded: $advancedExpanded) {
+                    Picker("Direction", selection: outlineDirection) {
+                        ForEach(OutlineStyle.Direction.allCases) { Text($0.label).tag($0) }
+                    }
+                    .disabled(currentStyle.mode == .off)
+                    Toggle("Show minutes unit (23m instead of 23)", isOn: $showUnit)
+                    Toggle("Blink during the warning", isOn: $warnBlink)
+                        .disabled(warnBefore == 0)
+                    Text("The blink follows the minutes left: every 5 seconds at 5 minutes, every second at 1 minute "
+                         + "and past the limit. It is off while Reduce Motion is on in System Settings.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .formStyle(.grouped)
+        .scrollDisabled(true)
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var outlineMode: Binding<OutlineStyle.Mode> {
+        Binding(
+            get: { currentStyle.mode },
+            set: { mode in
+                let direction = currentStyle == .off ? .clockwise : currentStyle.direction
+                outlineStyle = OutlineStyle.make(mode: mode, direction: direction).rawValue
+            }
+        )
+    }
+
+    private var outlineDirection: Binding<OutlineStyle.Direction> {
+        Binding(
+            get: { currentStyle.direction },
+            set: { outlineStyle = OutlineStyle.make(mode: currentStyle.mode, direction: $0).rawValue }
+        )
+    }
+}
+
 struct ReminderSettingsView: View {
     @AppStorage(Settings.Key.remindEvery) private var remindEvery = 10
     @AppStorage(Settings.Key.sound) private var sound = Settings.defaultSound
-    @AppStorage(Settings.Key.workLimit) private var workLimit = 45
+    @AppStorage(Settings.Key.workLimit) private var workLimit = 25
     @AppStorage(Settings.Key.reminderTitle) private var title = Settings.defaultReminderTitle
     @AppStorage(Settings.Key.reminderBody) private var body_ = Settings.defaultReminderBody
     @State private var testSent = false
@@ -139,10 +184,9 @@ struct ReminderSettingsView: View {
                 }
                 .onChange(of: sound) { name in preview(name) }
                 HStack {
-                    Button("Restore Defaults") {
+                    Button("Restore Default Text") {
                         title = Settings.defaultReminderTitle
                         body_ = Settings.defaultReminderBody
-                        sound = Settings.defaultSound
                     }
                     .controlSize(.small)
                     Spacer()
@@ -167,6 +211,7 @@ struct ReminderSettingsView: View {
 
 struct AboutView: View {
     @State private var copied = false
+    @State private var confirmReset = false
 
     var body: some View {
         VStack(spacing: 16) {
@@ -198,6 +243,21 @@ struct AboutView: View {
             }
             .font(.callout)
             Text("MIT License").font(.caption).foregroundStyle(.tertiary)
+
+            Button("Reset All Settings…", role: .destructive) { confirmReset = true }
+                .controlSize(.small)
+                .padding(.top, 8)
+                .confirmationDialog(
+                    "Reset all settings to their defaults?",
+                    isPresented: $confirmReset,
+                    titleVisibility: .visible
+                ) {
+                    Button("Reset All Settings", role: .destructive) { Settings.resetAll() }
+                    Button("Cancel", role: .cancel) {}
+                } message: {
+                    Text("Timer values, appearance, reminder text and sound go back to their defaults. "
+                         + "The current work block and history are kept. This cannot be undone.")
+                }
         }
         .padding(24)
     }

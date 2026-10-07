@@ -3,6 +3,7 @@ import SwiftUI
 /// Animated mock of the menu bar item: plays a whole work block in a loop so the chosen
 /// outline style, unit, warning color and blink can be seen before they happen for real.
 struct MenuBarPreview: View {
+    let theme: Theme
     let style: OutlineStyle
     let showUnit: Bool
     let blink: Bool
@@ -22,9 +23,12 @@ struct MenuBarPreview: View {
             let warning = !over && warnBefore > 0 && minutesLeft <= Double(warnBefore)
             let elapsedSeconds = over ? Double(workLimit * 60) + (t - blockDuration) * 60 : progress * Double(workLimit) * 60
 
-            let textColor: Color = over ? .red : (warning ? .orange : .primary)
-            let outlineColor: Color = over ? .red : (warning ? .orange : Color.primary.opacity(0.3))
-            let opacity = blinkOpacity(t: t, active: blink && (warning || over), fast: over)
+            let phase: CounterPhase = over ? .over : (warning ? .warning : .working)
+            let highContrast = NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast
+            let textColor = Color(nsColor: theme.textColor(for: phase))
+            let outlineColor = Color(nsColor: theme.outlineColor(for: phase, highContrast: highContrast))
+            let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+            let opacity = blinkOpacity(t: t, active: blink && !reduceMotion && (warning || over), fast: over)
 
             HStack(spacing: 14) {
                 Text(TimeFormat.counter(elapsedSeconds, showUnit: showUnit))
@@ -34,7 +38,7 @@ struct MenuBarPreview: View {
                     .padding(.vertical, 1)
                     .overlay {
                         Outline(stroke: outlineStroke(progress: progress, over: over))
-                            .stroke(outlineColor, style: StrokeStyle(lineWidth: 1.5, lineCap: .round))
+                            .stroke(outlineColor, style: StrokeStyle(lineWidth: highContrast ? 2.5 : 1.5, lineCap: .round))
                     }
                     .opacity(opacity)
                 Group {

@@ -38,6 +38,7 @@ final class ProgressBorder {
             return
         }
         shape.isHidden = false
+        shape.lineWidth = NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast ? 2.5 : 1.5
         shape.strokeColor = color.cgColor
         shape.strokeStart = CGFloat(stroke.start)
         shape.strokeEnd = CGFloat(stroke.end)

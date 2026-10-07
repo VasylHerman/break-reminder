@@ -13,6 +13,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
         let panes: [(title: String, symbol: String, view: AnyView)] = [
             ("General", "gearshape", AnyView(GeneralSettingsView())),
+            ("Appearance", "paintbrush", AnyView(AppearanceSettingsView())),
             ("Reminders", "bell", AnyView(ReminderSettingsView())),
             ("About", "info.circle", AnyView(AboutView())),
         ]

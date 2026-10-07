@@ -52,6 +52,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             self, selector: #selector(settingsChanged), name: UserDefaults.didChangeNotification, object: nil
         )
 
+        NSWorkspace.shared.notificationCenter.addObserver(
+            self, selector: #selector(settingsChanged),
+            name: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification, object: nil
+        )
+
         // `open BreakReminder.app --args --settings` opens the window at launch; handy for development.
         if CommandLine.arguments.contains("--settings") {
             openSettings()
@@ -78,8 +83,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     /// UserDefaults also changes on every tracker persist, so only react when a setting really changed.
-    @objc private func settingsChanged() {
-        guard tracker != nil, Settings.signature != appliedSettings else { return }
+    @objc private func settingsChanged(_ note: Notification) {
+        guard tracker != nil else { return }
+        let accessibility = note.name == NSWorkspace.accessibilityDisplayOptionsDidChangeNotification
+        guard accessibility || Settings.signature != appliedSettings else { return }
         appliedSettings = Settings.signature
         tracker.restThreshold = Settings.restThreshold
         tick()
@@ -91,6 +98,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     /// 1s at and past the limit. Nil when no blink is due.
     private func blinkPeriod(now: Date) -> TimeInterval? {
         guard Settings.warnBlink, Settings.warnBefore > 0,
+              !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion,
               let snapshot = lastSnapshot, snapshot.state == .working,
               Settings.remindersPausedUntil == nil
         else { return nil }
@@ -122,27 +130,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         guard let button = statusItem.button else { return }
         let time = TimeFormat.counter(snapshot.currentSeconds, showUnit: Settings.showUnit)
 
-        let color: NSColor
-        let borderColor: NSColor
+        let phase: CounterPhase
         let description: String
         switch snapshot.state {
         case .working where snapshot.currentSeconds >= Settings.workLimit:
-            color = .systemRed
-            borderColor = .systemRed
+            phase = .over
             description = "Over work limit"
         case .working where Settings.warnBefore > 0 && snapshot.currentSeconds >= Settings.workLimit - Settings.warnBefore:
-            color = .systemOrange
-            borderColor = .systemOrange
+            phase = .warning
             description = "Break coming up"
         case .working:
-            color = .labelColor
-            borderColor = .tertiaryLabelColor
+            phase = .working
             description = "Working"
         case .resting:
-            color = .systemGreen
-            borderColor = .systemGreen
+            phase = .resting
             description = "Resting"
         }
+        let theme = Settings.theme
+        let color = theme.textColor(for: phase)
+        let borderColor = theme.outlineColor(for: phase, highContrast: NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast)
 
         button.attributedTitle = NSAttributedString(
             string: time,

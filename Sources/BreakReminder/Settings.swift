@@ -16,6 +16,7 @@ enum Settings {
         static let warnBlink = "warnBlink"
         static let outlineStyle = "outlineStyle"
         static let showUnit = "showUnit"
+        static let theme = "theme"
     }
 
     static let defaultReminderTitle = "Time for a break"
@@ -27,11 +28,11 @@ enum Settings {
         "Basso", "Blow", "Bottle", "Frog", "Funk", "Glass", "Hero", "Morse",
         "Ping", "Pop", "Purr", "Sosumi", "Submarine", "Tink",
     ]
-    static let defaultSound = "Glass"
+    static let defaultSound = "Submarine"
 
     static func registerDefaults() {
         defaults.register(defaults: [
-            Key.workLimit: 45,
+            Key.workLimit: 25,
             Key.restThreshold: 5,
             Key.remindEvery: 10,
             Key.sound: defaultSound,
@@ -39,9 +40,19 @@ enum Settings {
             Key.reminderTitle: defaultReminderTitle,
             Key.reminderBody: defaultReminderBody,
             Key.warnBlink: true,
-            Key.outlineStyle: OutlineStyle.leftClockwise.rawValue,
+            Key.outlineStyle: OutlineStyle.spentClockwise.rawValue,
             Key.showUnit: false,
+            Key.theme: Theme.quiet.rawValue,
         ])
+    }
+
+    /// Removes every user setting so the registered defaults apply again. Timer state is untouched.
+    static func resetAll() {
+        for key in [Key.workLimit, Key.restThreshold, Key.remindEvery, Key.sound, Key.warnBefore,
+                    Key.pausedUntil, Key.reminderTitle, Key.reminderBody, Key.warnBlink,
+                    Key.outlineStyle, Key.showUnit, Key.theme] {
+            defaults.removeObject(forKey: key)
+        }
     }
 
     /// Continuous work after which the first reminder fires.
@@ -87,6 +98,11 @@ enum Settings {
         set { defaults.set(newValue, forKey: Key.pausedUntil) }
     }
 
+    static var theme: Theme {
+        get { Theme(rawValue: defaults.string(forKey: Key.theme) ?? "") ?? .quiet }
+        set { defaults.set(newValue.rawValue, forKey: Key.theme) }
+    }
+
     /// How the outline around the counter shows the block's progress.
     static var outlineStyle: OutlineStyle {
         get { OutlineStyle(stored: defaults.string(forKey: Key.outlineStyle)) }
@@ -113,7 +129,7 @@ enum Settings {
 
     /// Cheap fingerprint of every user setting, used to detect real changes.
     static var signature: String {
-        "\(workLimitMinutes)|\(restThresholdMinutes)|\(warnBeforeMinutes)|\(remindEveryMinutes)|\(notificationSound)|\(outlineStyle.rawValue)|\(showUnit)"
+        "\(workLimitMinutes)|\(restThresholdMinutes)|\(warnBeforeMinutes)|\(remindEveryMinutes)|\(notificationSound)|\(outlineStyle.rawValue)|\(showUnit)|\(theme.rawValue)"
     }
 
     static var workLimit: TimeInterval { TimeInterval(workLimitMinutes * 60) }
@@ -179,6 +195,59 @@ enum OutlineStyle: String, CaseIterable, Identifiable {
         }
     }
 
+    enum Mode: String, CaseIterable, Identifiable {
+        case left, spent, off
+        var id: String { rawValue }
+        var label: String {
+            switch self {
+            case .left: return "Time left"
+            case .spent: return "Time spent"
+            case .off: return "Off"
+            }
+        }
+    }
+
+    enum Direction: String, CaseIterable, Identifiable {
+        case clockwise, counterclockwise, bottom, top
+        var id: String { rawValue }
+        var label: String {
+            switch self {
+            case .clockwise: return "Clockwise"
+            case .counterclockwise: return "Counterclockwise"
+            case .bottom: return "From the bottom"
+            case .top: return "From the top"
+            }
+        }
+    }
+
+    var mode: Mode {
+        if self == .off { return .off }
+        return isTimeLeft ? .left : .spent
+    }
+
+    var direction: Direction {
+        switch self {
+        case .spentClockwise, .leftClockwise: return .clockwise
+        case .spentCounterclockwise, .leftCounterclockwise: return .counterclockwise
+        case .spentFromBottom, .leftToBottom: return .bottom
+        case .spentFromTop, .leftToTop, .off: return .top
+        }
+    }
+
+    static func make(mode: Mode, direction: Direction) -> OutlineStyle {
+        switch (mode, direction) {
+        case (.off, _): return .off
+        case (.spent, .clockwise): return .spentClockwise
+        case (.spent, .counterclockwise): return .spentCounterclockwise
+        case (.spent, .bottom): return .spentFromBottom
+        case (.spent, .top): return .spentFromTop
+        case (.left, .clockwise): return .leftClockwise
+        case (.left, .counterclockwise): return .leftCounterclockwise
+        case (.left, .bottom): return .leftToBottom
+        case (.left, .top): return .leftToTop
+        }
+    }
+
     /// Migrates names from 0.9.0.
     init(stored: String?) {
         switch stored {
@@ -186,7 +255,7 @@ enum OutlineStyle: String, CaseIterable, Identifiable {
         case "unwindFromTop": self = .leftClockwise
         case "retreatToTop": self = .leftCounterclockwise
         case "shrinkToBottom": self = .leftToBottom
-        default: self = OutlineStyle(rawValue: stored ?? "") ?? .leftClockwise
+        default: self = OutlineStyle(rawValue: stored ?? "") ?? .spentClockwise
         }
     }
 }
