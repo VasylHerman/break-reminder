@@ -1,0 +1,24 @@
+name: Feature request
+description: Suggest something Break Reminder should do
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like?
+      description: Describe the feature in a few sentences. What should happen, and when?
+      placeholder: "Example: a full-screen overlay during the break with a countdown."
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why is it useful?
+      description: What problem does it solve for you?
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Filled in automatically when you open this from the app menu.
+      render: text

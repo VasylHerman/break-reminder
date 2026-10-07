@@ -29,6 +29,12 @@ open "$(brew --prefix)/opt/break-reminder/BreakReminder.app"
 Homebrew builds the app from source on your Mac, so no notarization or Gatekeeper override
 is needed. To start it at login either use the in-app toggle or `brew services start break-reminder`.
 
+## Feedback
+
+Use Feedback in the app menu: "Request a Feature…" and "Report a Bug…" open GitHub issue forms
+with the environment details already filled in. Or open an issue directly on
+[GitHub](https://github.com/VasylHerman/break-reminder/issues/new/choose).
+
 ## Build and run
 
 ```sh
@@ -55,7 +61,7 @@ The bundle is ad-hoc signed, which is enough for local use. Nothing is uploaded 
 | Sound | Any built-in macOS alert sound, or Off. Picking one plays a preview |
 | Launch at Login | Registers the app as a login item |
 | Break Reminder vX.Y.Z | Installed version |
-| Open on GitHub | Opens this repository in the browser |
+| Feedback | Request a Feature and Report a Bug open prefilled GitHub issue forms with your app version, macOS version, install method, settings and current state. Also links to Release Notes and the project page |
 | Copy Homebrew Install Command | Puts `brew install vasylherman/tap/break-reminder` on the clipboard |
 
 Settings are stored in `UserDefaults` under `dev.vasyl.BreakReminder`.

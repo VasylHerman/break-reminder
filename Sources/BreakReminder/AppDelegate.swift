@@ -8,6 +8,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var timer: Timer?
     private let notifier = Notifier()
     private var tracker: ActivityTracker!
+    private var lastSnapshot: ActivityTracker.Snapshot?
 
 
     private let stateLine = NSMenuItem(title: "", action: nil, keyEquivalent: "")
@@ -40,6 +41,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func tick() {
         let now = Date()
         let snapshot = tracker.tick(now: now)
+        lastSnapshot = snapshot
         updateStatusItem(snapshot)
         remindIfNeeded(snapshot, now: now)
     }
@@ -161,7 +163,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let versionItem = NSMenuItem(title: "Break Reminder \(Self.versionString)", action: nil, keyEquivalent: "")
         versionItem.isEnabled = false
         menu.addItem(versionItem)
-        menu.addItem(NSMenuItem(title: "Open on GitHub", action: #selector(openGitHub), keyEquivalent: ""))
+        let feedbackMenu = NSMenu()
+        feedbackMenu.addItem(NSMenuItem(title: "Request a Feature…", action: #selector(requestFeature), keyEquivalent: ""))
+        feedbackMenu.addItem(NSMenuItem(title: "Report a Bug…", action: #selector(reportBug), keyEquivalent: ""))
+        feedbackMenu.addItem(.separator())
+        feedbackMenu.addItem(NSMenuItem(title: "Release Notes", action: #selector(openReleaseNotes), keyEquivalent: ""))
+        feedbackMenu.addItem(NSMenuItem(title: "Star on GitHub", action: #selector(openGitHub), keyEquivalent: ""))
+        feedbackMenu.addItem(NSMenuItem(title: "Project on GitHub", action: #selector(openGitHub), keyEquivalent: ""))
+        let feedbackItem = NSMenuItem(title: "Feedback", action: nil, keyEquivalent: "")
+        feedbackItem.submenu = feedbackMenu
+        menu.addItem(feedbackItem)
         menu.addItem(NSMenuItem(title: "Copy Homebrew Install Command", action: #selector(copyInstallCommand), keyEquivalent: ""))
         menu.addItem(.separator())
 
@@ -170,6 +181,44 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private static let repositoryURL = URL(string: "https://github.com/VasylHerman/break-reminder")!
+    private static let releasesURL = URL(string: "https://github.com/VasylHerman/break-reminder/releases")!
+    private static let newIssueURL = URL(string: "https://github.com/VasylHerman/break-reminder/issues/new")!
+
+    /// Context pasted into the "Environment" field of a feature request or bug report.
+    private func environmentReport() -> String {
+        let os = ProcessInfo.processInfo.operatingSystemVersionString
+        let installMethod = Bundle.main.bundlePath.contains("/Cellar/") ? "Homebrew" : "manual build"
+        var lines = [
+            "Break Reminder \(Self.versionString), macOS \(os), installed via \(installMethod)",
+            "Settings: work limit \(Settings.workLimitMinutes)m, rest after \(Settings.restThresholdMinutes)m idle, "
+                + "warn \(Settings.warnBeforeMinutes)m before, remind every \(Settings.remindEveryMinutes)m, "
+                + "sound \(Settings.notificationSound.isEmpty ? "off" : Settings.notificationSound)",
+        ]
+        if let snapshot = lastSnapshot {
+            let state = snapshot.state == .working ? "working" : "resting"
+            lines.append("State: \(state) for \(Self.format(snapshot.currentSeconds)), idle \(Int(snapshot.idleSeconds))s")
+        }
+        return lines.joined(separator: "\n")
+    }
+
+    /// Opens a prefilled GitHub issue form. Field ids match .github/ISSUE_TEMPLATE/*.yml.
+    private func openIssueForm(template: String) {
+        var components = URLComponents(url: Self.newIssueURL, resolvingAgainstBaseURL: false)!
+        components.queryItems = [
+            URLQueryItem(name: "template", value: template),
+            URLQueryItem(name: "environment", value: environmentReport()),
+        ]
+        // Encode everything outside the unreserved set so "+" and "&" in the text survive the trip.
+        let unreserved = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-._~"))
+        components.percentEncodedQuery = components.queryItems?.map { item in
+            let name = item.name.addingPercentEncoding(withAllowedCharacters: unreserved) ?? item.name
+            let value = (item.value ?? "").addingPercentEncoding(withAllowedCharacters: unreserved) ?? ""
+            return "\(name)=\(value)"
+        }.joined(separator: "&")
+        if let url = components.url {
+            NSWorkspace.shared.open(url)
+        }
+    }
     private static let installCommand = "brew install vasylherman/tap/break-reminder"
 
     private static var versionString: String {
@@ -226,6 +275,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func openGitHub() {
         NSWorkspace.shared.open(Self.repositoryURL)
+    }
+
+    @objc private func openReleaseNotes() {
+        NSWorkspace.shared.open(Self.releasesURL)
+    }
+
+    @objc private func requestFeature() {
+        openIssueForm(template: "feature_request.yml")
+    }
+
+    @objc private func reportBug() {
+        openIssueForm(template: "bug_report.yml")
     }
 
     @objc private func copyInstallCommand() {

@@ -1,0 +1,26 @@
+name: Bug report
+description: Something does not work as expected
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Set the work limit to 25 minutes
+        2. Work for 30 minutes
+        3. No reminder appears
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Filled in automatically when you open this from the app menu.
+      render: text
