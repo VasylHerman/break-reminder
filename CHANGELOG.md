@@ -3,6 +3,11 @@
 Release notes are taken from this file by the Release workflow: the section whose heading
 matches the tag becomes the GitHub release body.
 
+## 0.20.1
+
+### Changed
+- Settings › General shows when the last update check ran.
+
 ## 0.20.0
 
 ### Added

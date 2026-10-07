@@ -51,8 +51,8 @@ struct GeneralSettingsView: View {
                 Toggle("Install updates automatically while resting", isOn: $autoInstallUpdates)
                     .disabled(!checkForUpdates)
                 Text(Updater.installedWithHomebrew
-                     ? "Updates install through Homebrew in seconds and the app restarts in the same state. Installed: \(Updater.currentVersion)."
-                     : "This copy was not installed with Homebrew, so updates open the release page instead. Installed: \(Updater.currentVersion).")
+                     ? "Updates install through Homebrew in seconds and the app restarts in the same state. Installed: \(Updater.currentVersion). \(lastCheckText)"
+                     : "This copy was not installed with Homebrew, so updates open the release page instead. Installed: \(Updater.currentVersion). \(lastCheckText)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -73,6 +73,15 @@ struct GeneralSettingsView: View {
         .formStyle(.grouped)
         .scrollDisabled(true)
         .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var lastCheckText: String {
+        guard let date = Settings.lastUpdateCheck else { return "Not checked yet." }
+        let f = DateFormatter()
+        f.dateStyle = .short
+        f.timeStyle = .short
+        f.doesRelativeDateFormatting = true
+        return "Last checked \(f.string(from: date))."
     }
 
     private func setLaunchAtLogin(_ enabled: Bool) {
