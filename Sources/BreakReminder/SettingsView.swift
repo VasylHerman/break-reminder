@@ -2,21 +2,8 @@ import AppKit
 import ServiceManagement
 import SwiftUI
 
-/// The Settings window content. Values are bound straight to UserDefaults through @AppStorage,
+/// Panes of the Settings window. Values are bound straight to UserDefaults through @AppStorage,
 /// using the same keys as `Settings`, so the rest of the app sees changes immediately.
-struct SettingsView: View {
-    var body: some View {
-        TabView {
-            GeneralSettingsView()
-                .tabItem { Label("General", systemImage: "gearshape") }
-            ReminderSettingsView()
-                .tabItem { Label("Reminders", systemImage: "bell") }
-            AboutView()
-                .tabItem { Label("About", systemImage: "info.circle") }
-        }
-        .frame(width: 460, height: 420)
-    }
-}
 
 /// A form row with the label on the left, the value right-aligned, and a stepper after it.
 struct StepperRow: View {
@@ -65,6 +52,7 @@ struct GeneralSettingsView: View {
         }
         .formStyle(.grouped)
         .scrollDisabled(true)
+        .fixedSize(horizontal: false, vertical: true)
     }
 
     private func setLaunchAtLogin(_ enabled: Bool) {
@@ -85,15 +73,33 @@ struct GeneralSettingsView: View {
 struct ReminderSettingsView: View {
     @AppStorage(Settings.Key.remindEvery) private var remindEvery = 10
     @AppStorage(Settings.Key.sound) private var sound = Settings.defaultSound
+    @AppStorage(Settings.Key.workLimit) private var workLimit = 45
+    @AppStorage(Settings.Key.reminderTitle) private var title = Settings.defaultReminderTitle
+    @AppStorage(Settings.Key.reminderBody) private var body_ = Settings.defaultReminderBody
+    @State private var testSent = false
 
     var body: some View {
         Form {
-            Section("Notification") {
+            Section("Reminder") {
                 StepperRow(label: "Repeat while over the limit every", value: "\(remindEvery) min",
                            number: $remindEvery, range: 1...120)
-            }
-            Section("Sound") {
-                Picker("Alert sound", selection: $sound) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Title")
+                    TextField("", text: $title, prompt: Text(Settings.defaultReminderTitle))
+                        .textFieldStyle(.roundedBorder)
+                        .labelsHidden()
+                }
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Message")
+                    TextField("", text: $body_, prompt: Text(Settings.defaultReminderBody), axis: .vertical)
+                        .textFieldStyle(.roundedBorder)
+                        .labelsHidden()
+                        .lineLimit(2...4)
+                    Text("{minutes} is the length of the work block, {rest} the rest threshold.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Picker("Sound", selection: $sound) {
                     Text("Off").tag("")
                     Divider()
                     ForEach(Settings.availableSounds, id: \.self) { name in
@@ -102,14 +108,24 @@ struct ReminderSettingsView: View {
                 }
                 .onChange(of: sound) { name in preview(name) }
                 HStack {
+                    Button("Restore Defaults") {
+                        title = Settings.defaultReminderTitle
+                        body_ = Settings.defaultReminderBody
+                        sound = Settings.defaultSound
+                    }
+                    .controlSize(.small)
                     Spacer()
-                    Button("Preview") { preview(sound) }
-                        .disabled(sound.isEmpty)
+                    Button(testSent ? "Sent" : "Send Test Notification") {
+                        Notifier.shared.sendBreakReminder(minutes: workLimit)
+                        testSent = true
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { testSent = false }
+                    }
                 }
             }
         }
         .formStyle(.grouped)
         .scrollDisabled(true)
+        .fixedSize(horizontal: false, vertical: true)
     }
 
     private func preview(_ name: String) {

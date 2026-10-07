@@ -11,7 +11,13 @@ enum Settings {
         static let sound = "notificationSound"
         static let warnBefore = "warnBeforeMinutes"
         static let pausedUntil = "remindersPausedUntil"
+        static let reminderTitle = "reminderTitle"
+        static let reminderBody = "reminderBody"
     }
+
+    static let defaultReminderTitle = "Time for a break"
+    /// {minutes} is the length of the work block, {rest} the rest threshold in minutes.
+    static let defaultReminderBody = "You have been working for {minutes} minutes. Step away from the keyboard for {rest} minutes."
 
     /// Built-in macOS alert sounds, found in /System/Library/Sounds.
     static let availableSounds = [
@@ -27,6 +33,8 @@ enum Settings {
             Key.remindEvery: 10,
             Key.sound: defaultSound,
             Key.warnBefore: 5,
+            Key.reminderTitle: defaultReminderTitle,
+            Key.reminderBody: defaultReminderBody,
         ])
     }
 
@@ -52,6 +60,16 @@ enum Settings {
     static var warnBeforeMinutes: Int {
         get { max(0, defaults.integer(forKey: Key.warnBefore)) }
         set { defaults.set(newValue, forKey: Key.warnBefore) }
+    }
+
+    static var reminderTitle: String {
+        get { defaults.string(forKey: Key.reminderTitle) ?? defaultReminderTitle }
+        set { defaults.set(newValue, forKey: Key.reminderTitle) }
+    }
+
+    static var reminderBody: String {
+        get { defaults.string(forKey: Key.reminderBody) ?? defaultReminderBody }
+        set { defaults.set(newValue, forKey: Key.reminderBody) }
     }
 
     /// Reminders are silenced until this date. Nil or past means active.

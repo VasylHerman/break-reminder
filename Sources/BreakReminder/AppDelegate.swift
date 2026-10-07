@@ -6,7 +6,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private var statusItem: NSStatusItem!
     private var timer: Timer?
-    private let notifier = Notifier()
+    private let notifier = Notifier.shared
     private var tracker: ActivityTracker!
     private var lastSnapshot: ActivityTracker.Snapshot?
     private lazy var settingsWindow = SettingsWindowController()
@@ -63,12 +63,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if let last = tracker.lastReminder, now.timeIntervalSince(last) < Settings.remindEvery { return }
         tracker.lastReminder = now
 
-        let minutes = Int(snapshot.currentSeconds / 60)
-        notifier.send(
-            title: "Time for a break",
-            body: "You have been working for \(minutes) minutes. Step away from the keyboard for \(Settings.restThresholdMinutes) minutes.",
-            sound: Settings.notificationSound
-        )
+        notifier.sendBreakReminder(minutes: Int(snapshot.currentSeconds / 60))
     }
 
     /// UserDefaults also changes on every tracker persist, so only react when a setting really changed.
@@ -169,7 +164,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let restItem = NSMenuItem(title: "Rest Counts After Idle", action: nil, keyEquivalent: "")
         restItem.submenu = restThresholdMenu
         menu.addItem(restItem)
+        menu.addItem(.separator())
 
+        // Own group: macOS decorates "Settings…" with an icon and would indent its neighbours.
         menu.addItem(NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ","))
         menu.addItem(.separator())
 

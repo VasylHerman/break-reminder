@@ -66,7 +66,7 @@ The bundle is ad-hoc signed, which is enough for local use. Nothing is uploaded 
 | Tab | Options |
 | --- | --- |
 | General | Launch at login. Work limit, rest threshold and warn-before minutes as steppers |
-| Reminders | Repeat interval while over the limit. Alert sound with preview, or Off |
+| Reminders | Repeat interval, editable title and message with `{minutes}` and `{rest}` placeholders, sound picker that previews on change, Send Test Notification |
 | About | Version, install method, feedback and project links, copy the Homebrew install command |
 
 Settings are stored in `UserDefaults` under `dev.vasyl.BreakReminder` and apply immediately.
