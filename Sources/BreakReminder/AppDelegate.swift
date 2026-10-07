@@ -65,7 +65,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if let button = statusItem.button {
             progressBorder = ProgressBorder(button: button)
             // Redraw the moment the menu bar switches between light and dark, not at the next tick.
-            appearanceObservation = button.observe(\.effectiveAppearance) { [weak self] _, _ in
+            var lastAppearance = button.effectiveAppearance.name
+            appearanceObservation = button.observe(\.effectiveAppearance) { [weak self] button, _ in
+                // Resolving colors under the button's appearance also fires this; act only on a real change.
+                guard button.effectiveAppearance.name != lastAppearance else { return }
+                lastAppearance = button.effectiveAppearance.name
                 DispatchQueue.main.async {
                     guard let self, let snapshot = self.lastSnapshot else { return }
                     self.updateStatusItem(snapshot)

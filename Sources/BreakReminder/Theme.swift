@@ -50,17 +50,24 @@ enum Theme: String, CaseIterable, Identifiable {
     /// Outline tones follow the heart: the body at 40% of the label color while working, colored states
     /// at 65%, like the battery's lighter body around its solid level. `glyph` is kept for callers.
     func outlineColor(for phase: CounterPhase, highContrast: Bool, glyph: Bool = false) -> NSColor {
-        let idle = NSColor.labelColor.withAlphaComponent(highContrast ? 0.7 : ScoreHeart.outlineOpacity)
+        let idle = Self.faded(.labelColor, highContrast ? 0.7 : ScoreHeart.outlineOpacity)
         let colored = highContrast ? 1.0 : ScoreHeart.coloredOutlineOpacity
         switch (self, phase) {
-        case (_, .over): return .systemRed.withAlphaComponent(colored)
+        case (_, .over): return Self.faded(.systemRed, colored)
         case (.quiet, .working): return idle
-        case (.quiet, .warning): return .systemOrange.withAlphaComponent(colored)
+        case (.quiet, .warning): return Self.faded(.systemOrange, colored)
         case (.signal, .working): return idle
-        case (.signal, .warning): return .systemOrange.withAlphaComponent(colored)
-        case (.accent, .working): return .controlAccentColor.withAlphaComponent(ScoreHeart.outlineOpacity)
-        case (.accent, .warning): return .controlAccentColor.withAlphaComponent(colored)
+        case (.signal, .warning): return Self.faded(.systemOrange, colored)
+        case (.accent, .working): return Self.faded(.controlAccentColor, ScoreHeart.outlineOpacity)
+        case (.accent, .warning): return Self.faded(.controlAccentColor, colored)
         case (_, .resting): return idle
         }
+    }
+
+    /// A dynamic color at reduced opacity. `withAlphaComponent` alone bakes the color under the
+    /// appearance current at the call, which is the app's, not the menu bar's; a provider resolves
+    /// it where it is drawn.
+    static func faded(_ color: NSColor, _ alpha: CGFloat) -> NSColor {
+        NSColor(name: nil) { _ in color.withAlphaComponent(alpha) }
     }
 }

@@ -4,7 +4,9 @@ import QuartzCore
 /// A thin rounded outline drawn around the status item's text that closes clockwise
 /// as the work block approaches the limit.
 final class ProgressBorder {
-    private let shape = CAShapeLayer()
+    /// The arc is drawn into a bitmap like the heart; a CAShapeLayer stroke did not render under the
+    /// menu bar's vibrant dark appearance while bitmap layers did.
+    private let shape = CALayer()
     /// Heart mode draws the glyph as two layers so each part can beat on its own.
     let bodyLayer = CALayer()
     let levelLayer = CALayer()
@@ -14,11 +16,7 @@ final class ProgressBorder {
     init(button: NSStatusBarButton) {
         self.button = button
         button.wantsLayer = true
-        shape.fillColor = nil
-        shape.lineWidth = 1.5
-        shape.lineCap = .round
-        shape.strokeStart = 0
-        shape.strokeEnd = 0
+        shape.contentsGravity = .center
         for layer in [levelLayer, bodyLayer] {
             layer.contentsGravity = .center
             layer.isHidden = true
@@ -79,16 +77,17 @@ final class ProgressBorder {
             return
         }
         shape.isHidden = false
-        // One point, like the heart's body and the battery's; heavier only with Increase Contrast.
-        shape.lineWidth = NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast ? 2 : 1
-        shape.strokeColor = color.cgColor
-        shape.strokeStart = CGFloat(stroke.start)
-        shape.strokeEnd = CGFloat(stroke.end)
+        lineWidth = NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast ? 2 : 1
+        strokeColor = color
+        strokeRange = (stroke.start, stroke.end)
         anchor = stroke.anchor
         layout()
     }
 
     private var anchor: OutlineStyle.Anchor = .top
+    private var lineWidth: CGFloat = 1
+    private var strokeColor: NSColor = .labelColor
+    private var strokeRange: (start: Double, end: Double) = (0, 0)
 
     /// Diameter of the ring drawn around the glyph when there are no digits, and the glyph's canvas size. Set per glyph.
     var ringDiameter: CGFloat = 14
@@ -107,7 +106,7 @@ final class ProgressBorder {
             let imageRect = cell?.imageRect(forBounds: button.bounds) ?? button.bounds
             let dotCenterX = imageRect.maxX - glyphCanvas / 2
             rect = NSRect(x: dotCenterX - d / 2, y: (button.bounds.height - d) / 2, width: d, height: d)
-                .insetBy(dx: shape.lineWidth / 2, dy: shape.lineWidth / 2)
+                .insetBy(dx: lineWidth / 2, dy: lineWidth / 2)
             radius = rect.height / 2
         } else {
             let textSize = title.size()
@@ -119,11 +118,28 @@ final class ProgressBorder {
                 y: (button.bounds.height - height) / 2,
                 width: width,
                 height: height
-            ).insetBy(dx: shape.lineWidth / 2, dy: shape.lineWidth / 2)
+            ).insetBy(dx: lineWidth / 2, dy: lineWidth / 2)
             radius = min(6, rect.height / 2)
         }
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
         shape.frame = button.bounds
-        shape.path = Self.clockwisePath(in: rect, radius: radius, anchor: anchor)
+        shape.contentsScale = button.window?.backingScaleFactor ?? 2
+        let path = Self.clockwisePath(in: rect, radius: radius, anchor: anchor)
+        let image = NSImage(size: button.bounds.size, flipped: true) { [lineWidth, strokeColor, strokeRange] _ in
+            guard let trimmed = Self.trimmed(path, from: strokeRange.start, to: strokeRange.end),
+                  let context = NSGraphicsContext.current?.cgContext else { return true }
+            context.addPath(trimmed)
+            context.setLineWidth(lineWidth)
+            context.setLineCap(.round)
+            context.setStrokeColor(strokeColor.cgColor)
+            context.strokePath()
+            return true
+        }
+        button.effectiveAppearance.performAsCurrentDrawingAppearance {
+            shape.contents = Self.rasterize(image, scale: shape.contentsScale)
+        }
+        CATransaction.commit()
 
         // Glyph layers sit on the canvas at the right end of the image rect.
         if !bodyLayer.isHidden || !levelLayer.isHidden {
@@ -136,6 +152,52 @@ final class ProgressBorder {
             levelLayer.frame = canvasRect
             CATransaction.commit()
         }
+    }
+
+    /// The part of a path between two fractions of its length, sampled finely enough for a 1 pt stroke.
+    private static func trimmed(_ path: CGPath, from start: Double, to end: Double) -> CGPath? {
+        guard end > start else { return nil }
+        // Flatten the path into points, then keep the ones inside the length range.
+        var points: [CGPoint] = []
+        var current = CGPoint.zero
+        path.applyWithBlock { element in
+            let e = element.pointee
+            switch e.type {
+            case .moveToPoint: current = e.points[0]; points.append(current)
+            case .addLineToPoint: current = e.points[0]; points.append(current)
+            case .addQuadCurveToPoint, .addCurveToPoint:
+                let c1 = e.points[0], c2 = e.type == .addCurveToPoint ? e.points[1] : e.points[0]
+                let to = e.type == .addCurveToPoint ? e.points[2] : e.points[1]
+                let from = current
+                for i in 1...12 {
+                    let t = CGFloat(i) / 12, u = 1 - t
+                    let x = u*u*u*from.x + 3*u*u*t*c1.x + 3*u*t*t*c2.x + t*t*t*to.x
+                    let y = u*u*u*from.y + 3*u*u*t*c1.y + 3*u*t*t*c2.y + t*t*t*to.y
+                    points.append(CGPoint(x: x, y: y))
+                }
+                current = to
+            case .closeSubpath:
+                if let first = points.first { points.append(first) }
+            @unknown default: break
+            }
+        }
+        guard points.count > 1 else { return nil }
+        var lengths: [CGFloat] = [0]
+        for i in 1..<points.count { lengths.append(lengths[i - 1] + hypot(points[i].x - points[i-1].x, points[i].y - points[i-1].y)) }
+        let total = lengths.last!
+        let a = CGFloat(start) * total, b = CGFloat(end) * total
+        func point(at length: CGFloat) -> CGPoint {
+            var i = 1
+            while i < lengths.count - 1, lengths[i] < length { i += 1 }
+            let seg = max(lengths[i] - lengths[i - 1], 0.0001)
+            let t = (length - lengths[i - 1]) / seg
+            return CGPoint(x: points[i-1].x + (points[i].x - points[i-1].x) * t, y: points[i-1].y + (points[i].y - points[i-1].y) * t)
+        }
+        let out = CGMutablePath()
+        out.move(to: point(at: a))
+        for i in 1..<points.count where lengths[i] > a && lengths[i] < b { out.addLine(to: points[i]) }
+        out.addLine(to: point(at: b))
+        return out
     }
 
     /// Rounded rectangle starting at the top or bottom center, running clockwise as seen on screen.
