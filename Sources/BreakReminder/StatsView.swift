@@ -40,13 +40,14 @@ struct StatsView: View {
             visual
                 .frame(height: period == .month ? 150 : 110, alignment: .top)
 
+            figures
+
+            // Hover readout at the bottom: block details, day details, or a figure's rule.
             Text(hoverText ?? " ")
                 .font(.caption)
                 .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.top, -8)
-
-            figures
+                .frame(maxWidth: .infinity, minHeight: 32, alignment: .topLeading)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(20)
         .frame(width: 460)
@@ -90,16 +91,15 @@ struct StatsView: View {
             GeometryReader { geo in
                 Rectangle().fill(.clear).contentShape(Rectangle())
                     .onContinuousHover { phase in
-                        switch phase {
-                        case .active(let point):
+                        var text: String?
+                        if case .active(let point) = phase {
                             let x = point.x - geo[proxy.plotAreaFrame].origin.x
                             if let label: String = proxy.value(atX: x),
                                let row = rows.first(where: { formatter.string(from: $0.date) == label }) {
-                                hoverText = Self.describe(row)
+                                text = Self.describe(row)
                             }
-                        case .ended:
-                            hoverText = nil
                         }
+                        DispatchQueue.main.async { hoverText = text }
                     }
             }
         }
@@ -144,7 +144,14 @@ struct StatsView: View {
             HStack(spacing: 4) {
                 Text(label).font(.caption).foregroundStyle(.secondary)
                 if let help {
-                    Image(systemName: "info.circle").font(.caption2).foregroundStyle(.tertiary).help(help)
+                    // Shown in the readout line on hover; system tooltips are slow and the glyph is tiny.
+                    Image(systemName: "info.circle")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                        .padding(4)
+                        .contentShape(Rectangle())
+                        .onHover { inside in DispatchQueue.main.async { hoverText = inside ? help : nil } }
+                        .help(help)
                 }
             }
             HStack(alignment: .firstTextBaseline, spacing: 6) {
@@ -258,15 +265,16 @@ private struct DayTimeline: View {
                         .frame(width: width, alignment: .trailing)
                         .offset(y: trackY + trackHeight + 6)
                 }
+                // Offsets do not affect layout, so size the container to the whole area for hit testing.
+                .frame(width: width, height: geo.size.height, alignment: .topLeading)
                 .contentShape(Rectangle())
                 .onContinuousHover { phase in
-                    switch phase {
-                    case .active(let point):
+                    var text: String?
+                    if case .active(let point) = phase {
                         let date = range.start.addingTimeInterval(range.duration * Double(point.x / width))
-                        hoverText = describe(at: date, formatter: f)
-                    case .ended:
-                        hoverText = nil
+                        text = describe(at: date, formatter: f)
                     }
+                    DispatchQueue.main.async { hoverText = text }
                 }
             } else {
                 Text("The timeline fills in as you work: focus in grey, rests in green, skipped breaks as red ticks.")
@@ -322,7 +330,7 @@ private struct MonthGrid: View {
                             .foregroundStyle(row.date > Date() ? .quaternary : .secondary)
                     }
                     .frame(height: 18)
-                    .onHover { inside in hoverText = inside ? StatsView.describe(row) : nil }
+                    .onHover { inside in DispatchQueue.main.async { hoverText = inside ? StatsView.describe(row) : nil } }
                 }
             }
         }

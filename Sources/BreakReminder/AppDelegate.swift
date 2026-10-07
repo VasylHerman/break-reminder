@@ -31,6 +31,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         Settings.registerDefaults()
+        Self.takeOverOlderInstances()
         history.repairDuplicates()
         tracker = ActivityTracker(restThreshold: Settings.restThreshold, pollInterval: Self.pollInterval)
         tracker.onBlockEnded = { [weak self] state, start, end in
@@ -90,6 +91,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // `open BreakReminder.app --args --settings` opens the window at launch; handy for development.
         if CommandLine.arguments.contains("--settings") {
             openSettings()
+        }
+    }
+
+    /// Single instance: a newly launched copy asks older copies of the app to quit and carries on,
+    /// so an upgrade or a second launch never leaves two hearts in the menu bar.
+    private static func takeOverOlderInstances() {
+        guard let bundleID = Bundle.main.bundleIdentifier else { return }
+        let me = ProcessInfo.processInfo.processIdentifier
+        for app in NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
+        where app.processIdentifier != me {
+            app.terminate()
         }
     }
 

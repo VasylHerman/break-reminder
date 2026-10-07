@@ -28,7 +28,7 @@ struct GeneralSettingsView: View {
     @AppStorage(Settings.Key.restThreshold) private var restThreshold = 5
     @AppStorage(Settings.Key.warnBefore) private var warnBefore = 5
     @AppStorage(Settings.Key.carryOverRest) private var carryOverRest = false
-    @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
+    @State private var launchAtLogin = LoginItem.isEnabled
     @State private var launchAtLoginError: String?
 
     var body: some View {
@@ -36,6 +36,10 @@ struct GeneralSettingsView: View {
             Section {
                 Toggle("Launch at login", isOn: $launchAtLogin)
                     .onChange(of: launchAtLogin) { enabled in setLaunchAtLogin(enabled) }
+                Text("To also restart the app after a crash, run it as a Homebrew service instead: "
+                     + "brew services start break-reminder.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 if let launchAtLoginError {
                     Text(launchAtLoginError).font(.caption).foregroundStyle(.red)
                 }
@@ -61,15 +65,11 @@ struct GeneralSettingsView: View {
 
     private func setLaunchAtLogin(_ enabled: Bool) {
         do {
-            if enabled {
-                try SMAppService.mainApp.register()
-            } else {
-                try SMAppService.mainApp.unregister()
-            }
+            try LoginItem.set(enabled: enabled)
             launchAtLoginError = nil
         } catch {
             launchAtLoginError = "Could not change login item: \(error.localizedDescription)"
-            launchAtLogin = SMAppService.mainApp.status == .enabled
+            launchAtLogin = LoginItem.isEnabled
         }
     }
 }

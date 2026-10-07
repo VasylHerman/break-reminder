@@ -71,6 +71,8 @@ open "$(brew --prefix)/opt/break-reminder/BreakReminder.app"
 
 Homebrew builds the app from source on your Mac, so no notarization or Gatekeeper override
 is needed. To start it at login either use the in-app toggle or `brew services start break-reminder`.
+The service also restarts the app after a crash (not after a normal Quit); the in-app login item
+cannot, since launchd only supervises agents of apps signed with a Developer ID.
 
 ## Feedback
 
