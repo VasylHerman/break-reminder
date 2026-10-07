@@ -16,6 +16,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let launchAtLoginItem = NSMenuItem(title: "Launch at Login", action: #selector(toggleLaunchAtLogin), keyEquivalent: "")
     private let workLimitMenu = NSMenu()
     private let restThresholdMenu = NSMenu()
+    private let soundMenu = NSMenu()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         Settings.registerDefaults()
@@ -50,7 +51,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let minutes = Int(snapshot.currentSeconds / 60)
         notifier.send(
             title: "Time for a break",
-            body: "You have been working for \(minutes) minutes. Step away from the keyboard for \(Settings.restThresholdMinutes) minutes."
+            body: "You have been working for \(minutes) minutes. Step away from the keyboard for \(Settings.restThresholdMinutes) minutes.",
+            sound: Settings.notificationSound
         )
     }
 
@@ -123,6 +125,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         restItem.submenu = restThresholdMenu
         menu.addItem(restItem)
 
+        let soundItem = NSMenuItem(title: "Sound", action: nil, keyEquivalent: "")
+        let off = NSMenuItem(title: "Off", action: #selector(setSound(_:)), keyEquivalent: "")
+        off.representedObject = ""
+        soundMenu.addItem(off)
+        soundMenu.addItem(.separator())
+        for name in Settings.availableSounds {
+            let item = NSMenuItem(title: name, action: #selector(setSound(_:)), keyEquivalent: "")
+            item.representedObject = name
+            soundMenu.addItem(item)
+        }
+        soundItem.submenu = soundMenu
+        menu.addItem(soundItem)
+
         menu.addItem(launchAtLoginItem)
         menu.addItem(.separator())
 
@@ -159,6 +174,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         for item in workLimitMenu.items { item.state = item.tag == Settings.workLimitMinutes ? .on : .off }
         for item in restThresholdMenu.items { item.state = item.tag == Settings.restThresholdMinutes ? .on : .off }
+        for item in soundMenu.items {
+            guard let name = item.representedObject as? String else { continue }
+            item.state = name == Settings.notificationSound ? .on : .off
+        }
 
         if #available(macOS 13.0, *) {
             launchAtLoginItem.state = SMAppService.mainApp.status == .enabled ? .on : .off
@@ -193,6 +212,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         pasteboard.setString(Self.installCommand, forType: .string)
+    }
+
+    @objc private func setSound(_ sender: NSMenuItem) {
+        guard let name = sender.representedObject as? String else { return }
+        Settings.notificationSound = name
+        if !name.isEmpty {
+            NSSound(named: NSSound.Name(name))?.play()
+        }
     }
 
     @objc private func toggleLaunchAtLogin() {

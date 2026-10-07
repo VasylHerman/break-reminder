@@ -8,13 +8,22 @@ enum Settings {
         static let workLimit = "workLimitMinutes"
         static let restThreshold = "restThresholdMinutes"
         static let remindEvery = "remindEveryMinutes"
+        static let sound = "notificationSound"
     }
+
+    /// Built-in macOS alert sounds, found in /System/Library/Sounds.
+    static let availableSounds = [
+        "Basso", "Blow", "Bottle", "Frog", "Funk", "Glass", "Hero", "Morse",
+        "Ping", "Pop", "Purr", "Sosumi", "Submarine", "Tink",
+    ]
+    static let defaultSound = "Glass"
 
     static func registerDefaults() {
         defaults.register(defaults: [
             Key.workLimit: 45,
             Key.restThreshold: 5,
             Key.remindEvery: 10,
+            Key.sound: defaultSound,
         ])
     }
 
@@ -34,6 +43,12 @@ enum Settings {
     static var remindEveryMinutes: Int {
         get { max(1, defaults.integer(forKey: Key.remindEvery)) }
         set { defaults.set(newValue, forKey: Key.remindEvery) }
+    }
+
+    /// Name of the alert sound played with each reminder. Empty string means silent.
+    static var notificationSound: String {
+        get { defaults.string(forKey: Key.sound) ?? defaultSound }
+        set { defaults.set(newValue, forKey: Key.sound) }
     }
 
     static var workLimit: TimeInterval { TimeInterval(workLimitMinutes * 60) }

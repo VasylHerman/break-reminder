@@ -21,18 +21,24 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
         }
     }
 
-    func send(title: String, body: String) {
+    /// `sound` is a macOS alert sound name such as "Glass"; nil or empty means silent.
+    func send(title: String, body: String, sound: String?) {
+        let soundName = sound.flatMap { $0.isEmpty ? nil : $0 }
         if hasBundle {
             let content = UNMutableNotificationContent()
             content.title = title
             content.body = body
-            content.sound = .default
+            if let soundName {
+                // UNNotificationSound looks in /System/Library/Sounds among other places.
+                content.sound = UNNotificationSound(named: UNNotificationSoundName("\(soundName).aiff"))
+            }
             let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
             UNUserNotificationCenter.current().add(request) { error in
                 if let error { NSLog("Notification failed: \(error)") }
             }
         } else {
-            let script = "display notification \"\(escape(body))\" with title \"\(escape(title))\" sound name \"default\""
+            var script = "display notification \"\(escape(body))\" with title \"\(escape(title))\""
+            if let soundName { script += " sound name \"\(escape(soundName))\"" }
             let process = Process()
             process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
             process.arguments = ["-e", script]
