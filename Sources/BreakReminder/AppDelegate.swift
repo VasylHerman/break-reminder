@@ -134,8 +134,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         menu.addItem(launchAtLoginItem)
         menu.addItem(.separator())
+
+        let versionItem = NSMenuItem(title: "Break Reminder \(Self.versionString)", action: nil, keyEquivalent: "")
+        versionItem.isEnabled = false
+        menu.addItem(versionItem)
+        menu.addItem(NSMenuItem(title: "Open on GitHub", action: #selector(openGitHub), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: "Copy Homebrew Install Command", action: #selector(copyInstallCommand), keyEquivalent: ""))
+        menu.addItem(.separator())
+
         menu.addItem(NSMenuItem(title: "Quit Break Reminder", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         return menu
+    }
+
+    private static let repositoryURL = URL(string: "https://github.com/VasylHerman/break-reminder")!
+    private static let installCommand = "brew install vasylherman/tap/break-reminder"
+
+    private static var versionString: String {
+        let info = Bundle.main.infoDictionary
+        let short = info?["CFBundleShortVersionString"] as? String
+        let build = info?["CFBundleVersion"] as? String
+        guard let short else { return "dev" }
+        return build.map { "v\(short) (\($0))" } ?? "v\(short)"
     }
 
     func menuWillOpen(_ menu: NSMenu) {
@@ -177,6 +196,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         Settings.restThresholdMinutes = sender.tag
         tracker.restThreshold = Settings.restThreshold
         tick()
+    }
+
+    @objc private func openGitHub() {
+        NSWorkspace.shared.open(Self.repositoryURL)
+    }
+
+    @objc private func copyInstallCommand() {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(Self.installCommand, forType: .string)
     }
 
     @objc private func toggleLaunchAtLogin() {

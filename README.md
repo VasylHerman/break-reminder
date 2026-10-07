@@ -51,6 +51,9 @@ The bundle is ad-hoc signed, which is enough for local use. Nothing is uploaded 
 | Work Limit | 25, 30, 45, 60 or 90 minutes |
 | Rest Counts After Idle | 2, 3, 5 or 10 minutes of no input |
 | Launch at Login | Registers the app as a login item |
+| Break Reminder vX.Y.Z | Installed version |
+| Open on GitHub | Opens this repository in the browser |
+| Copy Homebrew Install Command | Puts `brew install vasylherman/tap/break-reminder` on the clipboard |
 
 Settings are stored in `UserDefaults` under `dev.vasyl.BreakReminder`.
 
