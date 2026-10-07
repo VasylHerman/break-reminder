@@ -17,6 +17,11 @@ enum Settings {
         static let outlineStyle = "outlineStyle"
         static let showUnit = "showUnit"
         static let theme = "theme"
+        static let smartPauseEnabled = "smartPauseEnabled"
+        static let smartPauseCall = "smartPauseCall"
+        static let smartPauseScreenShare = "smartPauseScreenShare"
+        static let smartPauseFullscreen = "smartPauseFullscreen"
+        static let smartPauseGrace = "smartPauseGraceMinutes"
     }
 
     static let defaultReminderTitle = "Time for a break"
@@ -43,6 +48,11 @@ enum Settings {
             Key.outlineStyle: OutlineStyle.spentClockwise.rawValue,
             Key.showUnit: false,
             Key.theme: Theme.quiet.rawValue,
+            Key.smartPauseEnabled: true,
+            Key.smartPauseCall: true,
+            Key.smartPauseScreenShare: true,
+            Key.smartPauseFullscreen: false,
+            Key.smartPauseGrace: 2,
         ])
     }
 
@@ -50,7 +60,8 @@ enum Settings {
     static func resetAll() {
         for key in [Key.workLimit, Key.restThreshold, Key.remindEvery, Key.sound, Key.warnBefore,
                     Key.pausedUntil, Key.reminderTitle, Key.reminderBody, Key.warnBlink,
-                    Key.outlineStyle, Key.showUnit, Key.theme] {
+                    Key.outlineStyle, Key.showUnit, Key.theme, Key.smartPauseEnabled, Key.smartPauseCall,
+                    Key.smartPauseScreenShare, Key.smartPauseFullscreen, Key.smartPauseGrace] {
             defaults.removeObject(forKey: key)
         }
     }
@@ -97,6 +108,30 @@ enum Settings {
         }
         set { defaults.set(newValue, forKey: Key.pausedUntil) }
     }
+
+    // Smart Pause master switch and triggers.
+    static var smartPauseEnabled: Bool {
+        get { defaults.bool(forKey: Key.smartPauseEnabled) }
+        set { defaults.set(newValue, forKey: Key.smartPauseEnabled) }
+    }
+    static var smartPauseCall: Bool {
+        get { defaults.bool(forKey: Key.smartPauseCall) }
+        set { defaults.set(newValue, forKey: Key.smartPauseCall) }
+    }
+    static var smartPauseScreenShare: Bool {
+        get { defaults.bool(forKey: Key.smartPauseScreenShare) }
+        set { defaults.set(newValue, forKey: Key.smartPauseScreenShare) }
+    }
+    static var smartPauseFullscreen: Bool {
+        get { defaults.bool(forKey: Key.smartPauseFullscreen) }
+        set { defaults.set(newValue, forKey: Key.smartPauseFullscreen) }
+    }
+    /// Minutes to wait after a Smart Pause ends before an overdue reminder fires.
+    static var smartPauseGraceMinutes: Int {
+        get { max(0, defaults.integer(forKey: Key.smartPauseGrace)) }
+        set { defaults.set(newValue, forKey: Key.smartPauseGrace) }
+    }
+    static var smartPauseGrace: TimeInterval { TimeInterval(smartPauseGraceMinutes * 60) }
 
     static var theme: Theme {
         get { Theme(rawValue: defaults.string(forKey: Key.theme) ?? "") ?? .quiet }

@@ -17,6 +17,12 @@ and reminds you through Notification Center to take a break.
   at 5 minutes, every second at 1 minute and past the limit. Can be turned off in Settings, and
   stays off while Reduce Motion is on. Increase Contrast thickens the outline.
 
+- Smart Pause holds reminders, sound and blink while the camera or microphone is in use, while
+  the screen is shared (Zoom and macOS recording), or while a fullscreen app is in front (off by
+  default). Each trigger is a toggle. Focus modes are not detected since macOS reveals them only
+  to apps with Full Disk Access. After a pause ends, an overdue
+  reminder waits a 2 minute grace period.
+
 No Accessibility or Input Monitoring permission is needed. The app only reads the system idle
 time (`CGEventSource.secondsSinceLastEventType`), never individual keystrokes or pointer events.
 The only prompt you will see is the standard notification permission dialog on first launch.
@@ -75,6 +81,7 @@ The bundle is ad-hoc signed, which is enough for local use. Nothing is uploaded 
 | General | Launch at login. Work limit, rest threshold and warn-before minutes as steppers |
 | Appearance | Live preview, theme (Quiet, Signal, Accent), outline mode, and under Advanced the outline direction, minutes unit and blink |
 | Reminders | Repeat interval, editable title and message with `{minutes}` and `{rest}` placeholders, sound picker that previews on change, Send Test Notification |
+| Smart Pause | Master switch, the three triggers with a live "Now" indicator when detected, and the grace period |
 | About | Version, install method, feedback and project links, copy the Homebrew install command, Reset All Settings |
 
 Settings are stored in `UserDefaults` under `dev.vasyl.BreakReminder` and apply immediately.
@@ -101,8 +108,9 @@ Sources/BreakReminder/
   AppDelegate.swift      status item, menu, polling, reminder logic
   ActivityTracker.swift  work/rest state machine on top of system idle time
   Notifier.swift         Notification Center banners (osascript fallback for `swift run`)
+  SmartPause.swift       call, screen share and fullscreen detection
   Settings.swift         UserDefaults-backed options
-  SettingsView.swift     SwiftUI settings panes (General, Appearance, Reminders, About)
+  SettingsView.swift     SwiftUI settings panes (General, Appearance, Reminders, Smart Pause, About)
   Theme.swift            curated menu bar color themes
   MenuBarPreview.swift   animated preview of the menu bar item
   ProgressBorder.swift   outline layer around the counter

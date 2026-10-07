@@ -209,6 +209,88 @@ struct ReminderSettingsView: View {
     }
 }
 
+struct SmartPauseSettingsView: View {
+    @AppStorage(Settings.Key.smartPauseEnabled) private var enabled = true
+    @AppStorage(Settings.Key.smartPauseCall) private var pauseCall = true
+    @AppStorage(Settings.Key.smartPauseScreenShare) private var pauseShare = true
+    @AppStorage(Settings.Key.smartPauseFullscreen) private var pauseFullscreen = false
+    @AppStorage(Settings.Key.smartPauseGrace) private var grace = 2
+    @State private var detected = SmartPause.detectAll()
+
+    private let refresh = Timer.publish(every: 2, on: .main, in: .common).autoconnect()
+
+    var body: some View {
+        Form {
+            Section {
+                Toggle(isOn: $enabled) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Smart Pause").font(.headline)
+                        Text("Hold reminders, sound and blink when a notification would get in the way. "
+                             + "The counter and outline keep going.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .toggleStyle(.switch)
+            }
+            Section("Hold reminders while") {
+                TriggerRow(title: "Camera or microphone in use", detail: "Zoom, Meet, Teams, FaceTime, huddles.",
+                           isOn: $pauseCall, detected: detected.call)
+                TriggerRow(title: "Screen sharing or recording", detail: "Zoom share and macOS screen recording.",
+                           isOn: $pauseShare, detected: detected.screenShare)
+                TriggerRow(title: "Fullscreen app in front", detail: "Video, games, presentations. Also a fullscreen editor, so off by default.",
+                           isOn: $pauseFullscreen, detected: detected.fullscreen)
+            }
+            .disabled(!enabled)
+            Section {
+                Text("Focus modes are not listed because macOS only reveals them to apps with Full Disk Access. "
+                     + "Banners are already silenced by Focus itself.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Section("After a pause ends") {
+                StepperRow(label: "Wait before an overdue reminder", value: grace == 0 ? "No wait" : "\(grace) min",
+                           number: $grace, range: 0...15)
+                Text("If you are over the limit when the pause ends, the reminder fires after this wait, "
+                     + "unless a rest has started by then.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .disabled(!enabled)
+        }
+        .formStyle(.grouped)
+        .scrollDisabled(true)
+        .fixedSize(horizontal: false, vertical: true)
+        .onReceive(refresh) { _ in detected = SmartPause.detectAll() }
+    }
+}
+
+/// A trigger toggle with a live "detected now" indicator, so the feature can be verified rather than trusted.
+private struct TriggerRow: View {
+    let title: String
+    let detail: String
+    @Binding var isOn: Bool
+    let detected: Bool
+
+    var body: some View {
+        Toggle(isOn: $isOn) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                    Text(detail).font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+                if detected {
+                    Label("Now", systemImage: "circle.fill")
+                        .font(.caption2)
+                        .foregroundStyle(.green)
+                        .labelStyle(.titleAndIcon)
+                }
+            }
+        }
+    }
+}
+
 struct AboutView: View {
     @State private var copied = false
     @State private var confirmReset = false

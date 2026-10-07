@@ -14,6 +14,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var lastSnapshot: ActivityTracker.Snapshot?
     private lazy var settingsWindow = SettingsWindowController()
     private var appliedSettings = Settings.signature
+    private var smartPauseReason: SmartPauseReason?
+    private var smartPauseEndedAt: Date?
 
     private let stateLine = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private let lastWorkLine = NSMenuItem(title: "", action: nil, keyEquivalent: "")
@@ -69,13 +71,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let now = Date()
         let snapshot = tracker.tick(now: now)
         lastSnapshot = snapshot
+        updateSmartPause(now: now)
         updateStatusItem(snapshot)
         remindIfNeeded(snapshot, now: now)
     }
 
+    private func updateSmartPause(now: Date) {
+        let reason = SmartPause.activeReason()
+        if smartPauseReason != nil, reason == nil {
+            smartPauseEndedAt = now
+        }
+        smartPauseReason = reason
+    }
+
+    /// Reminders and the blink are held while a Smart Pause is active and for the grace period after it.
+    private var remindersHeld: Bool {
+        if Settings.remindersPausedUntil != nil || smartPauseReason != nil { return true }
+        if let ended = smartPauseEndedAt, Date().timeIntervalSince(ended) < Settings.smartPauseGrace { return true }
+        return false
+    }
+
     private func remindIfNeeded(_ snapshot: ActivityTracker.Snapshot, now: Date) {
         guard snapshot.state == .working, snapshot.currentSeconds >= Settings.workLimit else { return }
-        if Settings.remindersPausedUntil != nil { return }
+        if remindersHeld { return }
         if let last = tracker.lastReminder, now.timeIntervalSince(last) < Settings.remindEvery { return }
         tracker.lastReminder = now
 
@@ -100,7 +118,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         guard Settings.warnBlink, Settings.warnBefore > 0,
               !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion,
               let snapshot = lastSnapshot, snapshot.state == .working,
-              Settings.remindersPausedUntil == nil
+              !remindersHeld
         else { return nil }
         let elapsed = snapshot.currentSeconds + now.timeIntervalSince(snapshot.takenAt)
         let remaining = Settings.workLimit - elapsed
@@ -264,6 +282,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             pausedLine.title = "Reminders paused until \(formatter.string(from: until))"
             pausedLine.isHidden = false
             resumeItem.isHidden = false
+        } else if let reason = smartPauseReason {
+            pausedLine.title = "Reminders held: \(reason.rawValue)"
+            pausedLine.isHidden = false
+            resumeItem.isHidden = true
         } else {
             pausedLine.isHidden = true
             resumeItem.isHidden = true

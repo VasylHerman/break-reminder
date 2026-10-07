@@ -40,6 +40,12 @@ enum Feedback {
                 + "warn \(Settings.warnBeforeMinutes)m before, remind every \(Settings.remindEveryMinutes)m, "
                 + "sound \(Settings.notificationSound.isEmpty ? "off" : Settings.notificationSound)",
         ]
+        let triggers = [
+            Settings.smartPauseCall ? "call" : nil, Settings.smartPauseScreenShare ? "share" : nil,
+            Settings.smartPauseFullscreen ? "fullscreen" : nil,
+        ].compactMap { $0 }
+        let smart = Settings.smartPauseEnabled ? (triggers.isEmpty ? "on, no triggers" : triggers.joined(separator: ", ")) : "off"
+        lines.append("Smart Pause: \(smart), grace \(Settings.smartPauseGraceMinutes)m")
         if let snapshot = snapshotProvider() {
             let state = snapshot.state == .working ? "working" : "resting"
             lines.append("State: \(state) for \(TimeFormat.minutes(snapshot.currentSeconds)), idle \(Int(snapshot.idleSeconds))s")

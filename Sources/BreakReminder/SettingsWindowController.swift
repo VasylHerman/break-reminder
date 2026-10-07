@@ -15,6 +15,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             ("General", "gearshape", AnyView(GeneralSettingsView())),
             ("Appearance", "paintbrush", AnyView(AppearanceSettingsView())),
             ("Reminders", "bell", AnyView(ReminderSettingsView())),
+            ("Smart Pause", "pause.circle", AnyView(SmartPauseSettingsView())),
             ("About", "info.circle", AnyView(AboutView())),
         ]
         for pane in panes {
