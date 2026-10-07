@@ -146,7 +146,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func updateStatusItem(_ snapshot: ActivityTracker.Snapshot) {
         guard let button = statusItem.button else { return }
-        let time = TimeFormat.counter(snapshot.currentSeconds, showUnit: Settings.showUnit)
+        let counterStyle = Settings.counterStyle
+        let time = TimeFormat.counter(snapshot.currentSeconds, showUnit: counterStyle == .numberWithUnit)
 
         let phase: CounterPhase
         let description: String
@@ -168,15 +169,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let color = theme.textColor(for: phase)
         let borderColor = theme.outlineColor(for: phase, highContrast: NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast)
 
-        button.attributedTitle = NSAttributedString(
-            string: time,
-            attributes: [.foregroundColor: color, .font: Self.counterFont]
-        )
-        button.toolTip = "\(description): \(time)"
+        button.toolTip = "\(description): \(TimeFormat.minutes(snapshot.currentSeconds))"
 
-        // Outline around the counter shows the block's progress; hidden while resting.
+        if counterStyle == .hidden {
+            // Dot in the state color, with the outline drawn as a ring around it.
+            button.attributedTitle = NSAttributedString(string: "")
+            button.image = Self.dotImage(color: phase == .working ? .secondaryLabelColor : borderColor)
+        } else {
+            button.image = nil
+            button.attributedTitle = NSAttributedString(
+                string: time,
+                attributes: [.foregroundColor: color, .font: Self.counterFont]
+            )
+        }
+
+        // Outline around the counter (or ring around the dot) shows the block's progress; hidden while resting.
         let progress: Double? = snapshot.state == .working ? snapshot.currentSeconds / Settings.workLimit : nil
         progressBorder?.update(progress: progress, style: Settings.outlineStyle, color: borderColor)
+    }
+
+    /// A 6 pt filled circle on a canvas the size of the ring, so the status item is wide enough for both.
+    /// Dynamic colors resolve when the image is drawn, so it follows the menu bar appearance.
+    private static func dotImage(color: NSColor) -> NSImage {
+        let canvas = ProgressBorder.ringDiameter + 2
+        let image = NSImage(size: NSSize(width: canvas, height: canvas), flipped: false) { rect in
+            color.setFill()
+            NSBezierPath(ovalIn: rect.insetBy(dx: (canvas - 6) / 2, dy: (canvas - 6) / 2)).fill()
+            return true
+        }
+        image.isTemplate = false
+        return image
     }
 
     /// The regular menu bar font, same as the clock, with monospaced digits so the item does not jitter.

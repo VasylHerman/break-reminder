@@ -15,7 +15,8 @@ enum Settings {
         static let reminderBody = "reminderBody"
         static let warnBlink = "warnBlink"
         static let outlineStyle = "outlineStyle"
-        static let showUnit = "showUnit"
+        static let showUnit = "showUnit"          // 0.9 to 0.10, migrated into counterStyle
+        static let counterStyle = "counterStyle"
         static let theme = "theme"
         static let smartPauseEnabled = "smartPauseEnabled"
         static let smartPauseCall = "smartPauseCall"
@@ -46,7 +47,7 @@ enum Settings {
             Key.reminderBody: defaultReminderBody,
             Key.warnBlink: true,
             Key.outlineStyle: OutlineStyle.spentClockwise.rawValue,
-            Key.showUnit: false,
+            Key.counterStyle: CounterStyle.number.rawValue,
             Key.theme: Theme.quiet.rawValue,
             Key.smartPauseEnabled: true,
             Key.smartPauseCall: true,
@@ -60,7 +61,7 @@ enum Settings {
     static func resetAll() {
         for key in [Key.workLimit, Key.restThreshold, Key.remindEvery, Key.sound, Key.warnBefore,
                     Key.pausedUntil, Key.reminderTitle, Key.reminderBody, Key.warnBlink,
-                    Key.outlineStyle, Key.showUnit, Key.theme, Key.smartPauseEnabled, Key.smartPauseCall,
+                    Key.outlineStyle, Key.showUnit, Key.counterStyle, Key.theme, Key.smartPauseEnabled, Key.smartPauseCall,
                     Key.smartPauseScreenShare, Key.smartPauseFullscreen, Key.smartPauseGrace] {
             defaults.removeObject(forKey: key)
         }
@@ -144,10 +145,13 @@ enum Settings {
         set { defaults.set(newValue.rawValue, forKey: Key.outlineStyle) }
     }
 
-    /// Show the unit after the counter in the menu bar ("23m" instead of "23").
-    static var showUnit: Bool {
-        get { defaults.bool(forKey: Key.showUnit) }
-        set { defaults.set(newValue, forKey: Key.showUnit) }
+    /// What the menu bar item shows: the number with or without a unit, or only a dot.
+    static var counterStyle: CounterStyle {
+        get {
+            if let raw = defaults.string(forKey: Key.counterStyle), let style = CounterStyle(rawValue: raw) { return style }
+            return defaults.bool(forKey: Key.showUnit) ? .numberWithUnit : .number
+        }
+        set { defaults.set(newValue.rawValue, forKey: Key.counterStyle) }
     }
 
     /// Blink the menu bar counter during the warning window and past the limit.
@@ -164,7 +168,7 @@ enum Settings {
 
     /// Cheap fingerprint of every user setting, used to detect real changes.
     static var signature: String {
-        "\(workLimitMinutes)|\(restThresholdMinutes)|\(warnBeforeMinutes)|\(remindEveryMinutes)|\(notificationSound)|\(outlineStyle.rawValue)|\(showUnit)|\(theme.rawValue)"
+        "\(workLimitMinutes)|\(restThresholdMinutes)|\(warnBeforeMinutes)|\(remindEveryMinutes)|\(notificationSound)|\(outlineStyle.rawValue)|\(counterStyle.rawValue)|\(theme.rawValue)"
     }
 
     static var workLimit: TimeInterval { TimeInterval(workLimitMinutes * 60) }
@@ -291,6 +295,19 @@ enum OutlineStyle: String, CaseIterable, Identifiable {
         case "retreatToTop": self = .leftCounterclockwise
         case "shrinkToBottom": self = .leftToBottom
         default: self = OutlineStyle(rawValue: stored ?? "") ?? .spentClockwise
+        }
+    }
+}
+
+/// What the menu bar item shows.
+enum CounterStyle: String, CaseIterable, Identifiable {
+    case numberWithUnit, number, hidden
+    var id: String { rawValue }
+    var label: String {
+        switch self {
+        case .numberWithUnit: return "Number with unit"
+        case .number: return "Number"
+        case .hidden: return "Hidden, dot only"
         }
     }
 }

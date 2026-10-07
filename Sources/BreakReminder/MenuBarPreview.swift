@@ -5,7 +5,7 @@ import SwiftUI
 struct MenuBarPreview: View {
     let theme: Theme
     let style: OutlineStyle
-    let showUnit: Bool
+    let counterStyle: CounterStyle
     let blink: Bool
     let workLimit: Int
     let warnBefore: Int
@@ -31,16 +31,28 @@ struct MenuBarPreview: View {
             let opacity = blinkOpacity(t: t, active: blink && !reduceMotion && (warning || over), fast: over)
 
             HStack(spacing: 14) {
-                Text(TimeFormat.counter(elapsedSeconds, showUnit: showUnit))
-                    .font(.system(size: 13, weight: .regular).monospacedDigit())
-                    .foregroundStyle(textColor)
-                    .padding(.horizontal, 4)
-                    .padding(.vertical, 1)
-                    .overlay {
-                        Outline(stroke: outlineStroke(progress: progress, over: over))
-                            .stroke(outlineColor, style: StrokeStyle(lineWidth: highContrast ? 2.5 : 1.5, lineCap: .round))
-                    }
-                    .opacity(opacity)
+                if counterStyle == .hidden {
+                    Circle()
+                        .fill(phase == .working ? Color.secondary : outlineColor)
+                        .frame(width: 6, height: 6)
+                        .frame(width: 14, height: 14)
+                        .overlay {
+                            Outline(stroke: outlineStroke(progress: progress, over: over), circular: true)
+                                .stroke(outlineColor, style: StrokeStyle(lineWidth: highContrast ? 2.5 : 1.5, lineCap: .round))
+                        }
+                        .opacity(opacity)
+                } else {
+                    Text(TimeFormat.counter(elapsedSeconds, showUnit: counterStyle == .numberWithUnit))
+                        .font(.system(size: 13, weight: .regular).monospacedDigit())
+                        .foregroundStyle(textColor)
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 1)
+                        .overlay {
+                            Outline(stroke: outlineStroke(progress: progress, over: over))
+                                .stroke(outlineColor, style: StrokeStyle(lineWidth: highContrast ? 2.5 : 1.5, lineCap: .round))
+                        }
+                        .opacity(opacity)
+                }
                 Group {
                     Image(systemName: "wifi")
                     Image(systemName: "battery.75percent")
@@ -77,11 +89,12 @@ struct MenuBarPreview: View {
 /// Rounded outline starting at the top or bottom center and running clockwise, trimmed to the stroke range.
 private struct Outline: Shape {
     let stroke: (anchor: OutlineStyle.Anchor, start: Double, end: Double)?
+    var circular = false
 
     func path(in rect: CGRect) -> Path {
         guard let stroke else { return Path() }
         let r = rect.insetBy(dx: 0.75, dy: 0.75)
-        let radius = min(6, r.height / 2)
+        let radius = circular ? r.height / 2 : min(6, r.height / 2)
         var p = Path()
         if stroke.anchor == .top {
             p.move(to: CGPoint(x: r.midX, y: r.minY))

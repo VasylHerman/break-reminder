@@ -75,9 +75,11 @@ struct AppearanceSettingsView: View {
     @AppStorage(Settings.Key.warnBefore) private var warnBefore = 5
     @AppStorage(Settings.Key.theme) private var theme = Theme.quiet.rawValue
     @AppStorage(Settings.Key.outlineStyle) private var outlineStyle = OutlineStyle.spentClockwise.rawValue
-    @AppStorage(Settings.Key.showUnit) private var showUnit = false
+    @AppStorage(Settings.Key.counterStyle) private var counterStyle = CounterStyle.number.rawValue
     @AppStorage(Settings.Key.warnBlink) private var warnBlink = true
     @State private var advancedExpanded = false
+
+    private var currentCounter: CounterStyle { CounterStyle(rawValue: counterStyle) ?? .number }
 
     private var currentTheme: Theme { Theme(rawValue: theme) ?? .quiet }
     private var currentStyle: OutlineStyle { OutlineStyle(stored: outlineStyle) }
@@ -88,7 +90,7 @@ struct AppearanceSettingsView: View {
                 MenuBarPreview(
                     theme: currentTheme,
                     style: currentStyle,
-                    showUnit: showUnit,
+                    counterStyle: currentCounter,
                     blink: warnBlink,
                     workLimit: workLimit,
                     warnBefore: warnBefore
@@ -104,16 +106,23 @@ struct AppearanceSettingsView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            Section("Outline") {
+            Section("Menu bar item") {
+                Picker("Counter", selection: $counterStyle) {
+                    ForEach(CounterStyle.allCases) { Text($0.label).tag($0.rawValue) }
+                }
                 Picker("Outline shows", selection: outlineMode) {
                     ForEach(OutlineStyle.Mode.allCases) { Text($0.label).tag($0) }
                 }
+                Text(currentCounter == .hidden
+                     ? "A dot in the state color, with the outline as a ring around it. The exact time is in the menu and the tooltip."
+                     : "The outline wraps the number and closes in red once the limit is reached.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 DisclosureGroup("Advanced", isExpanded: $advancedExpanded) {
                     Picker("Direction", selection: outlineDirection) {
                         ForEach(OutlineStyle.Direction.allCases) { Text($0.label).tag($0) }
                     }
                     .disabled(currentStyle.mode == .off)
-                    Toggle("Show minutes unit (23m instead of 23)", isOn: $showUnit)
                     Toggle("Blink during the warning", isOn: $warnBlink)
                         .disabled(warnBefore == 0)
                     Text("The blink follows the minutes left: every 5 seconds at 5 minutes, every second at 1 minute "

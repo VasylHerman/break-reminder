@@ -48,20 +48,33 @@ final class ProgressBorder {
 
     private var anchor: OutlineStyle.Anchor = .top
 
-    /// Fit the outline around the text, centered in the button.
+    /// Diameter of the ring drawn around the dot when the counter is hidden.
+    static let ringDiameter: CGFloat = 14
+
+    /// Fit the outline around the text, or draw a ring around the dot when there is no text.
     @objc private func layout() {
         guard let button, let title = button.attributedTitle as NSAttributedString? else { return }
-        let textSize = title.size()
-        let width = ceil(textSize.width) + 8
-        let height = ceil(textSize.height) + 2
-        let rect = NSRect(
-            x: (button.bounds.width - width) / 2,
-            y: (button.bounds.height - height) / 2,
-            width: width,
-            height: height
-        ).insetBy(dx: shape.lineWidth / 2, dy: shape.lineWidth / 2)
+        let rect: NSRect
+        let radius: CGFloat
+        if title.length == 0 {
+            let d = Self.ringDiameter
+            rect = NSRect(x: (button.bounds.width - d) / 2, y: (button.bounds.height - d) / 2, width: d, height: d)
+                .insetBy(dx: shape.lineWidth / 2, dy: shape.lineWidth / 2)
+            radius = rect.height / 2
+        } else {
+            let textSize = title.size()
+            let width = ceil(textSize.width) + 8
+            let height = ceil(textSize.height) + 2
+            rect = NSRect(
+                x: (button.bounds.width - width) / 2,
+                y: (button.bounds.height - height) / 2,
+                width: width,
+                height: height
+            ).insetBy(dx: shape.lineWidth / 2, dy: shape.lineWidth / 2)
+            radius = min(6, rect.height / 2)
+        }
         shape.frame = button.bounds
-        shape.path = Self.clockwisePath(in: rect, radius: min(6, rect.height / 2), anchor: anchor)
+        shape.path = Self.clockwisePath(in: rect, radius: radius, anchor: anchor)
     }
 
     /// Rounded rectangle starting at the top or bottom center, running clockwise as seen on screen.

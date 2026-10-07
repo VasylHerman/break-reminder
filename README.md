@@ -6,7 +6,8 @@ and reminds you through Notification Center to take a break.
 - Work time is measured from system-wide keyboard, mouse and trackpad activity.
 - Rest starts after the input has been idle for 5 minutes (configurable). The work counter resets.
 - After 25 minutes of continuous work (configurable) a notification fires with a sound (Submarine by default), then repeats every 10 minutes until you rest.
-- The menu bar shows a plain minute counter (23, or 1:05 from an hour on; a unit can be enabled in Settings).
+- The menu bar shows a plain minute counter (23, or 1:05 from an hour on). Settings can add the unit
+  or hide the number entirely, leaving a dot in the state color with the outline as a ring around it.
   The default theme is monochrome: the number stays in the menu bar color and the outline
   carries the state, red only once you are over. The Signal theme adds orange for the warning
   and green for rest; Accent uses your macOS accent color.
@@ -79,7 +80,7 @@ The bundle is ad-hoc signed, which is enough for local use. Nothing is uploaded 
 | Tab | Options |
 | --- | --- |
 | General | Launch at login. Work limit, rest threshold and warn-before minutes as steppers |
-| Appearance | Live preview, theme (Quiet, Signal, Accent), outline mode, and under Advanced the outline direction, minutes unit and blink |
+| Appearance | Live preview, theme (Quiet, Signal, Accent), counter (number with unit, number, hidden dot), outline mode, and under Advanced the outline direction and blink |
 | Reminders | Repeat interval, editable title and message with `{minutes}` and `{rest}` placeholders, sound picker that previews on change, Send Test Notification |
 | Smart Pause | Master switch, the three triggers with a live "Now" indicator when detected, and the grace period |
 | About | Version, install method, feedback and project links, copy the Homebrew install command, Reset All Settings |
