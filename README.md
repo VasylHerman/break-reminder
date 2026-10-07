@@ -66,6 +66,9 @@ Every 5 seconds the app reads the system idle time.
 - While resting, any new input switches back to working and starts a fresh work block.
 - Short pauses below the threshold (reading, thinking, a quick chat) stay inside the work block.
 - Sleeping the Mac counts as idle, so a closed lid long enough becomes a rest automatically.
+- State is saved every few seconds. If the app restarts (upgrade, crash, relaunch) within the rest
+  threshold, the running work block and the pending reminder continue where they were. After a
+  longer gap the current block starts fresh, but the last work and rest history is kept.
 
 ## Layout
 

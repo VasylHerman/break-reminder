@@ -9,8 +9,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let notifier = Notifier()
     private var tracker: ActivityTracker!
 
-    private var previousState: ActivityState = .resting
-    private var lastReminder: Date?
 
     private let stateLine = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private let lastWorkLine = NSMenuItem(title: "", action: nil, keyEquivalent: "")
@@ -22,7 +20,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         Settings.registerDefaults()
         tracker = ActivityTracker(restThreshold: Settings.restThreshold, pollInterval: Self.pollInterval)
-        previousState = tracker.state
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         statusItem.menu = buildMenu()
@@ -41,20 +38,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func tick() {
         let now = Date()
         let snapshot = tracker.tick(now: now)
-
-        if snapshot.state != previousState {
-            previousState = snapshot.state
-            lastReminder = nil
-        }
-
         updateStatusItem(snapshot)
         remindIfNeeded(snapshot, now: now)
     }
 
     private func remindIfNeeded(_ snapshot: ActivityTracker.Snapshot, now: Date) {
         guard snapshot.state == .working, snapshot.currentSeconds >= Settings.workLimit else { return }
-        if let last = lastReminder, now.timeIntervalSince(last) < Settings.remindEvery { return }
-        lastReminder = now
+        if let last = tracker.lastReminder, now.timeIntervalSince(last) < Settings.remindEvery { return }
+        tracker.lastReminder = now
 
         let minutes = Int(snapshot.currentSeconds / 60)
         notifier.send(
@@ -182,13 +173,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func resetWork() {
         tracker.resetWork()
-        lastReminder = nil
         tick()
     }
 
     @objc private func setWorkLimit(_ sender: NSMenuItem) {
         Settings.workLimitMinutes = sender.tag
-        lastReminder = nil
+        tracker.lastReminder = nil
         tick()
     }
 

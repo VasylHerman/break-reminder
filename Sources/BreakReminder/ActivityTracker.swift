@@ -1,7 +1,7 @@
 import CoreGraphics
 import Foundation
 
-enum ActivityState {
+enum ActivityState: String, Codable {
     case working
     case resting
 }
@@ -36,12 +36,65 @@ final class ActivityTracker {
     private var lastWorkSeconds: TimeInterval?
     private var lastRestSeconds: TimeInterval?
 
-    init(restThreshold: TimeInterval, pollInterval: TimeInterval) {
+    /// Time of the last reminder in the current work block, kept here so it survives restarts.
+    var lastReminder: Date?
+
+    // MARK: - Persistence
+
+    private struct PersistedState: Codable {
+        var state: ActivityState
+        var stateStart: Date
+        var lastWorkSeconds: TimeInterval?
+        var lastRestSeconds: TimeInterval?
+        var lastReminder: Date?
+        var savedAt: Date
+    }
+
+    private static let storageKey = "trackerState"
+    private let defaults = UserDefaults.standard
+
+    init(restThreshold: TimeInterval, pollInterval: TimeInterval, now: Date = Date()) {
         self.restThreshold = restThreshold
         self.activeWindow = pollInterval * 2
+
         let idle = Self.systemIdleSeconds()
-        self.stateStart = Date().addingTimeInterval(-idle)
+        self.stateStart = now.addingTimeInterval(-idle)
         self.state = idle >= restThreshold ? .resting : .working
+
+        restore(now: now)
+    }
+
+    /// Restore the previous session if the app was away for less than the rest threshold.
+    /// A longer gap cannot be classified (the Mac may have been in use with the app quit),
+    /// so only the history is kept and the current block starts fresh.
+    private func restore(now: Date) {
+        guard let data = defaults.data(forKey: Self.storageKey),
+              let saved = try? JSONDecoder().decode(PersistedState.self, from: data)
+        else { return }
+
+        lastWorkSeconds = saved.lastWorkSeconds
+        lastRestSeconds = saved.lastRestSeconds
+
+        let gap = now.timeIntervalSince(saved.savedAt)
+        guard gap >= 0, gap < restThreshold else { return }
+
+        state = saved.state
+        stateStart = saved.stateStart
+        lastReminder = saved.lastReminder
+    }
+
+    private func persist(now: Date) {
+        let snapshot = PersistedState(
+            state: state,
+            stateStart: stateStart,
+            lastWorkSeconds: lastWorkSeconds,
+            lastRestSeconds: lastRestSeconds,
+            lastReminder: lastReminder,
+            savedAt: now
+        )
+        if let data = try? JSONEncoder().encode(snapshot) {
+            defaults.set(data, forKey: Self.storageKey)
+        }
     }
 
     static func systemIdleSeconds() -> TimeInterval {
@@ -54,6 +107,8 @@ final class ActivityTracker {
     func resetWork(now: Date = Date()) {
         state = .working
         stateStart = now
+        lastReminder = nil
+        persist(now: now)
     }
 
     @discardableResult
@@ -68,6 +123,7 @@ final class ActivityTracker {
                 lastWorkSeconds = max(0, restStart.timeIntervalSince(stateStart))
                 state = .resting
                 stateStart = restStart
+                lastReminder = nil
             }
         case .resting:
             if idle < activeWindow {
@@ -75,9 +131,11 @@ final class ActivityTracker {
                 lastRestSeconds = max(0, workStart.timeIntervalSince(stateStart))
                 state = .working
                 stateStart = workStart
+                lastReminder = nil
             }
         }
 
+        persist(now: now)
         return Snapshot(
             state: state,
             currentSeconds: max(0, now.timeIntervalSince(stateStart)),
