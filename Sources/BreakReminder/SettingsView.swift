@@ -74,7 +74,7 @@ struct AppearanceSettingsView: View {
     @AppStorage(Settings.Key.workLimit) private var workLimit = 25
     @AppStorage(Settings.Key.warnBefore) private var warnBefore = 5
     @AppStorage(Settings.Key.theme) private var theme = Theme.quiet.rawValue
-    @AppStorage(Settings.Key.outlineStyle) private var outlineStyle = OutlineStyle.spentClockwise.rawValue
+    @AppStorage(Settings.Key.outlineStyle) private var outlineStyle = OutlineStyle.spentFromBottom.rawValue
     @AppStorage(Settings.Key.counterStyle) private var counterStyle = CounterStyle.heart.rawValue
     @AppStorage(Settings.Key.showScore) private var showScore = false
     @AppStorage(Settings.Key.warnBlink) private var warnBlink = true
@@ -82,7 +82,7 @@ struct AppearanceSettingsView: View {
     @AppStorage(Settings.Key.beatNormal) private var beatNormal = 10
     @AppStorage(Settings.Key.beatWarning) private var beatWarning = 40
     @AppStorage(Settings.Key.beatOver) private var beatOver = 80
-    @AppStorage(Settings.Key.beatWhileWorking) private var beatWhileWorking = false
+    @AppStorage(Settings.Key.beatWhileWorking) private var beatWhileWorking = true
     @State private var advancedExpanded = false
 
     private var currentCounter: CounterStyle { CounterStyle(rawValue: counterStyle) ?? .number }

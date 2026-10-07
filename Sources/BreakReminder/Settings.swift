@@ -60,8 +60,8 @@ enum Settings {
             Key.beatNormal: 10,
             Key.beatWarning: 40,
             Key.beatOver: 80,
-            Key.beatWhileWorking: false,
-            Key.outlineStyle: OutlineStyle.spentClockwise.rawValue,
+            Key.beatWhileWorking: true,
+            Key.outlineStyle: OutlineStyle.spentFromBottom.rawValue,
             Key.outlineSpan: 50,
             Key.counterStyle: CounterStyle.heart.rawValue,
             Key.showScore: false,
@@ -388,7 +388,7 @@ enum OutlineStyle: String, CaseIterable, Identifiable {
         case "unwindFromTop": self = .leftClockwise
         case "retreatToTop": self = .leftCounterclockwise
         case "shrinkToBottom": self = .leftToBottom
-        default: self = OutlineStyle(rawValue: stored ?? "") ?? .spentClockwise
+        default: self = OutlineStyle(rawValue: stored ?? "") ?? .spentFromBottom
         }
     }
 }

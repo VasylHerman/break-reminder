@@ -13,13 +13,13 @@ and reminds you through Notification Center to take a break.
   The default theme is monochrome: the number stays in the menu bar color and the outline
   carries the state, red only once you are over. The Signal theme adds orange for the warning
   and green for rest; Accent uses your macOS accent color.
-- A thin outline around the counter shows the block's progress. By default it grows clockwise
-  from the top as time is spent, and a whole block covers half the outline (adjustable under
+- A thin outline around the counter shows the block's progress. By default it grows from the
+  bottom toward the top on both sides as time is spent, and a whole block covers half the outline (adjustable under
   Advanced, or with `defaults write dev.vasyl.BreakReminder outlineSpanPercent -int 75`).
   Settings offers time spent, time left or Off, with the direction under Advanced. Past the limit the arc stays at its covered share and turns red; it never closes into a full ring.
 - The item beats like a heart, a lub-dub at a configurable rate: during the warning it climbs
   from the normal rate (10 bpm) to the warning rate (40), and holds at the over rate (80) past
-  the limit. Beating while working is optional. Rates are in Settings › Appearance › Advanced or
+  the limit. Beating while working is on by default and can be turned off. Rates are in Settings › Appearance › Advanced or
   `defaults write dev.vasyl.BreakReminder beatWarningBPM -int 120`. With Reduce Motion on it
   steps instead of fading. Increase Contrast thickens the outline.
 
