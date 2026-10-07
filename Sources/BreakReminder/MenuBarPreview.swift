@@ -48,16 +48,19 @@ struct MenuBarPreview: View {
                         .opacity(opacity)
                 }
                 if counterStyle == .heart {
-                    // The same centered canvas the menu bar uses, so the ring sits on the heart's ink.
-                    Image(nsImage: ScoreHeart.canvas(fill: score ?? 0, color: .labelColor, canvas: 22) ?? NSImage())
-                        .frame(width: 22, height: 22)
-                        .overlay {
-                            if !resting {
-                                Outline(stroke: outlineStroke(progress: progress, over: over), circular: true)
-                                    .stroke(ringColor, style: StrokeStyle(lineWidth: outlineWidth, lineCap: .round))
-                            }
+                    // The same centered canvases the menu bar uses; each part beats only if selected.
+                    ZStack {
+                        Image(nsImage: ScoreHeart.canvas(fill: score ?? 0, color: .labelColor, canvas: 22, parts: .level) ?? NSImage())
+                            .opacity(Settings.beatLevel ? opacity : 1)
+                        Image(nsImage: ScoreHeart.canvas(fill: score ?? 0, color: .labelColor, canvas: 22, parts: .body) ?? NSImage())
+                            .opacity(Settings.beatBody ? opacity : 1)
+                        if !resting {
+                            Outline(stroke: outlineStroke(progress: progress, over: over), circular: true)
+                                .stroke(ringColor, style: StrokeStyle(lineWidth: outlineWidth, lineCap: .round))
+                                .opacity(Settings.beatArc ? opacity : 1)
                         }
-                        .opacity(opacity)
+                    }
+                    .frame(width: 22, height: 22)
                 } else if counterStyle == .hidden {
                     Circle()
                         .fill((phase == .working ? Color.primary : outlineColor).opacity(ScoreHeart.levelOpacity))

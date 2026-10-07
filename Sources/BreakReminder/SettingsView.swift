@@ -83,6 +83,9 @@ struct AppearanceSettingsView: View {
     @AppStorage(Settings.Key.beatWarning) private var beatWarning = 40
     @AppStorage(Settings.Key.beatOver) private var beatOver = 80
     @AppStorage(Settings.Key.beatWhileWorking) private var beatWhileWorking = true
+    @AppStorage(Settings.Key.beatBody) private var beatBody = true
+    @AppStorage(Settings.Key.beatLevel) private var beatLevel = true
+    @AppStorage(Settings.Key.beatArc) private var beatArc = true
     @State private var advancedExpanded = false
 
     private var currentCounter: CounterStyle { CounterStyle(rawValue: counterStyle) ?? .number }
@@ -144,6 +147,17 @@ struct AppearanceSettingsView: View {
                         .disabled(!warnBlink)
                     Toggle("Beat while working, not only in the warning", isOn: $beatWhileWorking)
                         .disabled(!warnBlink)
+                    if currentCounter == .heart {
+                        HStack {
+                            Text("Beats")
+                            Spacer()
+                            Toggle("Body", isOn: $beatBody)
+                            Toggle("Level", isOn: $beatLevel)
+                            Toggle("Arc", isOn: $beatArc)
+                        }
+                        .toggleStyle(.checkbox)
+                        .disabled(!warnBlink)
+                    }
                     Text("A lub-dub. In the warning the rate climbs from the normal rate to the warning rate as the "
                          + "limit nears, then holds at the over rate. With Reduce Motion on it steps instead of fading.")
                         .font(.caption)

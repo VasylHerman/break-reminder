@@ -5,6 +5,10 @@ import QuartzCore
 /// as the work block approaches the limit.
 final class ProgressBorder {
     private let shape = CAShapeLayer()
+    /// Heart mode draws the glyph as two layers so each part can beat on its own.
+    let bodyLayer = CALayer()
+    let levelLayer = CALayer()
+    var ringLayer: CALayer { shape }
     private weak var button: NSStatusBarButton?
 
     init(button: NSStatusBarButton) {
@@ -15,11 +19,30 @@ final class ProgressBorder {
         shape.lineCap = .round
         shape.strokeStart = 0
         shape.strokeEnd = 0
+        for layer in [levelLayer, bodyLayer] {
+            layer.contentsGravity = .center
+            layer.isHidden = true
+            button.layer?.addSublayer(layer)
+        }
         button.layer?.addSublayer(shape)
         button.postsFrameChangedNotifications = true
         NotificationCenter.default.addObserver(
             self, selector: #selector(layout), name: NSView.frameDidChangeNotification, object: button
         )
+    }
+
+    /// Shows the heart as body and level layers (nil hides them).
+    func setGlyph(body: NSImage?, level: NSImage?) {
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        let scale = button?.window?.backingScaleFactor ?? 2
+        for (layer, image) in [(bodyLayer, body), (levelLayer, level)] {
+            layer.isHidden = image == nil
+            layer.contentsScale = scale
+            layer.contents = image
+        }
+        CATransaction.commit()
+        layout()
     }
 
     /// `progress` is the block's share of the limit (may exceed 1); nil hides the border.
@@ -83,6 +106,18 @@ final class ProgressBorder {
         }
         shape.frame = button.bounds
         shape.path = Self.clockwisePath(in: rect, radius: radius, anchor: anchor)
+
+        // Glyph layers sit on the canvas at the right end of the image rect.
+        if !bodyLayer.isHidden || !levelLayer.isHidden {
+            let imageRect = cell?.imageRect(forBounds: button.bounds) ?? button.bounds
+            let canvasRect = NSRect(x: imageRect.maxX - glyphCanvas, y: (button.bounds.height - glyphCanvas) / 2,
+                                    width: glyphCanvas, height: glyphCanvas)
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            bodyLayer.frame = canvasRect
+            levelLayer.frame = canvasRect
+            CATransaction.commit()
+        }
     }
 
     /// Rounded rectangle starting at the top or bottom center, running clockwise as seen on screen.

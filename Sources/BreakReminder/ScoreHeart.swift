@@ -20,8 +20,16 @@ enum ScoreHeart {
     /// `fill` 0...1. Tinted with `color`; dynamic colors resolve at draw time, so call again on appearance changes.
     /// Both the stroke and the level are derived from the solid heart by erosion, so the stroke is uniform and
     /// the level follows it at a constant gap, exactly like the battery's body and level. `weight` is unused.
+    /// Which parts to draw; the menu bar draws body and level on separate layers so they can beat apart.
+    struct Parts: OptionSet {
+        let rawValue: Int
+        static let body = Parts(rawValue: 1)
+        static let level = Parts(rawValue: 2)
+        static let all: Parts = [.body, .level]
+    }
+
     static func image(fill: Double, color: NSColor, pointSize: CGFloat = pointSize, weight: NSFont.Weight = .regular,
-                      outlineOpacity: CGFloat = outlineOpacity) -> NSImage? {
+                      outlineOpacity: CGFloat = outlineOpacity, parts: Parts = .all) -> NSImage? {
         let config = NSImage.SymbolConfiguration(pointSize: pointSize, weight: .regular)
         guard let solid = NSImage(systemSymbolName: "heart.fill", accessibilityDescription: nil)?.withSymbolConfiguration(config)
         else { return nil }
@@ -62,8 +70,8 @@ enum ScoreHeart {
                 r.fill(using: .sourceIn)
                 return true
             }
-            tintedLevel.draw(in: frame)
-            tintedStroke.draw(in: frame)
+            if parts.contains(.level) { tintedLevel.draw(in: frame) }
+            if parts.contains(.body) { tintedStroke.draw(in: frame) }
             return true
         }
         image.isTemplate = false
@@ -88,11 +96,14 @@ enum ScoreHeart {
     static let menuBarPointSize: CGFloat = 16
     static let menuBarWeight: NSFont.Weight = .regular
 
-    static func canvas(fill: Double, color: NSColor, canvas: CGFloat, outlineOpacity: CGFloat = outlineOpacity) -> NSImage? {
+    static func canvas(fill: Double, color: NSColor, canvas: CGFloat, outlineOpacity: CGFloat = outlineOpacity,
+                       parts: Parts = .all) -> NSImage? {
         guard let heart = image(fill: fill, color: color, pointSize: menuBarPointSize, weight: menuBarWeight,
-                                outlineOpacity: outlineOpacity) else { return nil }
-        // Center the glyph's ink, not its bounding box: the symbol's box has empty space below the shape.
-        let ink = inkBounds(of: heart) ?? NSRect(origin: .zero, size: heart.size)
+                                outlineOpacity: outlineOpacity, parts: parts),
+              let whole = parts == .all ? heart : image(fill: 1, color: color, pointSize: menuBarPointSize, weight: menuBarWeight)
+        else { return nil }
+        // Center the whole glyph's ink, not its bounding box, so body and level canvases line up.
+        let ink = inkBounds(of: whole) ?? NSRect(origin: .zero, size: heart.size)
         let result = NSImage(size: NSSize(width: canvas, height: canvas), flipped: false) { _ in
             let x = (canvas / 2 - ink.midX).rounded(.toNearestOrEven)
             let y = (canvas / 2 - ink.midY).rounded(.toNearestOrEven)
@@ -101,6 +112,13 @@ enum ScoreHeart {
         }
         result.isTemplate = false
         return result
+    }
+
+    /// An empty canvas, used as the status item image so the layers have room.
+    static func emptyCanvas(_ canvas: CGFloat) -> NSImage {
+        let image = NSImage(size: NSSize(width: canvas, height: canvas), flipped: false) { _ in true }
+        image.isTemplate = false
+        return image
     }
 
     /// Bounding box of the non-transparent pixels, in points (y up), rasterized at 2x.

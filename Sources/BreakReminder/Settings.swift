@@ -18,6 +18,9 @@ enum Settings {
         static let beatWarning = "beatWarningBPM"
         static let beatOver = "beatOverBPM"
         static let beatWhileWorking = "beatWhileWorking"
+        static let beatBody = "beatBody"
+        static let beatLevel = "beatLevel"
+        static let beatArc = "beatArc"
         static let outlineStyle = "outlineStyle"
         static let outlineSpan = "outlineSpanPercent"
         static let showUnit = "showUnit"          // 0.9 to 0.10, migrated into counterStyle
@@ -61,6 +64,9 @@ enum Settings {
             Key.beatWarning: 40,
             Key.beatOver: 80,
             Key.beatWhileWorking: true,
+            Key.beatBody: true,
+            Key.beatLevel: true,
+            Key.beatArc: true,
             Key.outlineStyle: OutlineStyle.spentFromBottom.rawValue,
             Key.outlineSpan: 50,
             Key.counterStyle: CounterStyle.heart.rawValue,
@@ -81,6 +87,7 @@ enum Settings {
         for key in [Key.workLimit, Key.restThreshold, Key.remindEvery, Key.sound, Key.warnBefore,
                     Key.pausedUntil, Key.reminderTitle, Key.reminderBody, Key.warnBlink,
                     Key.beatNormal, Key.beatWarning, Key.beatOver, Key.beatWhileWorking,
+                    Key.beatBody, Key.beatLevel, Key.beatArc,
                     Key.outlineStyle, Key.outlineSpan, Key.showUnit, Key.counterStyle, Key.showScore, Key.theme, Key.smartPauseEnabled, Key.smartPauseCall,
                     Key.smartPauseScreenShare, Key.smartPauseFullscreen, Key.smartPauseGrace,
                     Key.firmnessMode, Key.autoFirmness, Key.autoFirmnessDay, Key.autoSteppedDown,
@@ -235,6 +242,20 @@ enum Settings {
         get { min(200, max(5, defaults.integer(forKey: Key.beatOver))) }
         set { defaults.set(newValue, forKey: Key.beatOver) }
     }
+    // Which parts of the heart item beat.
+    static var beatBody: Bool {
+        get { defaults.bool(forKey: Key.beatBody) }
+        set { defaults.set(newValue, forKey: Key.beatBody) }
+    }
+    static var beatLevel: Bool {
+        get { defaults.bool(forKey: Key.beatLevel) }
+        set { defaults.set(newValue, forKey: Key.beatLevel) }
+    }
+    static var beatArc: Bool {
+        get { defaults.bool(forKey: Key.beatArc) }
+        set { defaults.set(newValue, forKey: Key.beatArc) }
+    }
+
     /// Beat at the normal rate while working, not only in the warning.
     static var beatWhileWorking: Bool {
         get { defaults.bool(forKey: Key.beatWhileWorking) }
@@ -255,7 +276,7 @@ enum Settings {
 
     /// Cheap fingerprint of every user setting, used to detect real changes.
     static var signature: String {
-        "\(workLimitMinutes)|\(restThresholdMinutes)|\(warnBeforeMinutes)|\(remindEveryMinutes)|\(notificationSound)|\(beatNormalBPM)|\(beatWarningBPM)|\(beatOverBPM)|\(beatWhileWorking)|\(outlineStyle.rawValue)|\(outlineSpanPercent)|\(counterStyle.rawValue)|\(showScore)|\(theme.rawValue)|\(firmnessMode.rawValue)"
+        "\(workLimitMinutes)|\(restThresholdMinutes)|\(warnBeforeMinutes)|\(remindEveryMinutes)|\(notificationSound)|\(beatNormalBPM)|\(beatWarningBPM)|\(beatOverBPM)|\(beatWhileWorking)|\(beatBody)|\(beatLevel)|\(beatArc)|\(outlineStyle.rawValue)|\(outlineSpanPercent)|\(counterStyle.rawValue)|\(showScore)|\(theme.rawValue)|\(firmnessMode.rawValue)"
     }
 
     static var workLimit: TimeInterval { TimeInterval(workLimitMinutes * 60) }

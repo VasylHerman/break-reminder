@@ -201,8 +201,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let now = Date()
         guard let period = blinkPeriod(now: now), now.timeIntervalSince(lastBlink) >= period - 0.05 else { return }
         lastBlink = now
-        guard let button = statusItem.button else { return }
-        Self.beat(button, period: period)
+        guard let button = statusItem.button, let buttonLayer = button.layer else { return }
+        // Heart mode beats only the chosen parts; the other modes beat the whole item.
+        var layers: [CALayer] = [buttonLayer]
+        if Settings.counterStyle == .heart, let border = progressBorder {
+            layers = []
+            if Settings.beatBody { layers.append(border.bodyLayer) }
+            if Settings.beatLevel { layers.append(border.levelLayer) }
+            if Settings.beatArc { layers.append(border.ringLayer) }
+        }
+        Self.beat(layers, period: period)
     }
 
     /// One heartbeat: a strong pulse, a lighter one, then rest. The keyframes span 0.55 s and are
@@ -210,14 +218,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     static let beatTimes: [Double] = [0, 0.09, 0.18, 0.27, 0.36, 0.45, 0.55]
     static let beatValues: [Double] = [1, 0.3, 1, 1, 0.55, 1, 1]
 
-    static func beat(_ button: NSStatusBarButton, period: TimeInterval) {
-        guard let layer = button.layer else { return }
+    static func beat(_ layers: [CALayer], period: TimeInterval) {
+        guard !layers.isEmpty else { return }
         let duration = min(beatTimes.last!, period * 0.85)
         let scale = duration / beatTimes.last!
         if NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
             // Reduce Motion: the same rhythm as plain steps, no interpolation.
             for (time, value) in zip(beatTimes, beatValues) {
-                DispatchQueue.main.asyncAfter(deadline: .now() + time * scale) { button.alphaValue = CGFloat(value) }
+                DispatchQueue.main.asyncAfter(deadline: .now() + time * scale) {
+                    CATransaction.begin()
+                    CATransaction.setDisableActions(true)
+                    layers.forEach { $0.opacity = Float(value) }
+                    CATransaction.commit()
+                }
             }
             return
         }
@@ -226,7 +239,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         animation.keyTimes = beatTimes.map { NSNumber(value: $0 / beatTimes.last!) }
         animation.values = beatValues
         animation.timingFunctions = Array(repeating: CAMediaTimingFunction(name: .easeInEaseOut), count: beatValues.count - 1)
-        layer.add(animation, forKey: "beat")
+        layers.forEach { $0.add(animation, forKey: "beat") }
     }
 
     // MARK: - Status bar
@@ -276,11 +289,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         if counterStyle == .heart {
             // The heart is the item: a gauge of the weekly score, like the battery icon is a gauge.
-            // It keeps the label color; only the outline ring carries the state.
+            // Body and level are separate layers over an empty canvas so each part can beat on its own.
             button.attributedTitle = NSAttributedString(string: "")
-            button.image = ScoreHeart.canvas(fill: week.adherence ?? 0, color: .labelColor, canvas: 22)
+            button.image = ScoreHeart.emptyCanvas(22)
             progressBorder?.ringDiameter = 21
             progressBorder?.glyphCanvas = 22
+            progressBorder?.setGlyph(
+                body: ScoreHeart.canvas(fill: week.adherence ?? 0, color: .labelColor, canvas: 22, parts: .body),
+                level: ScoreHeart.canvas(fill: week.adherence ?? 0, color: .labelColor, canvas: 22, parts: .level)
+            )
             // The ring stays in the neutral tone in every state; the blink carries the warning.
             let progress: Double? = snapshot.state == .working ? snapshot.currentSeconds / Settings.workLimit : nil
             let ringColor = theme.outlineColor(for: .working, highContrast: NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast, glyph: true)
@@ -288,6 +305,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             return
         } else if counterStyle == .hidden {
             // Dot in the state color, with the outline drawn as a ring around it.
+            progressBorder?.setGlyph(body: nil, level: nil)
             button.attributedTitle = NSAttributedString(string: "")
             progressBorder?.ringDiameter = 16
             progressBorder?.glyphCanvas = 18
@@ -295,6 +313,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                                         .withAlphaComponent(ScoreHeart.levelOpacity))
             button.image = heart.map { ScoreHeart.compose(heart: $0, with: dot) } ?? dot
         } else {
+            progressBorder?.setGlyph(body: nil, level: nil)
             button.image = heart
             button.attributedTitle = NSAttributedString(
                 string: time,
