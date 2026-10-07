@@ -41,6 +41,12 @@ final class ActivityTracker {
     /// Time of the last reminder in the current work block, kept here so it survives restarts.
     var lastReminder: Date?
 
+    /// Called when a block ends: the finished state with its start and end.
+    var onBlockEnded: ((ActivityState, Date, Date) -> Void)?
+
+    /// Start of the current block.
+    var currentBlockStart: Date { stateStart }
+
     // MARK: - Persistence
 
     private struct PersistedState: Codable {
@@ -107,6 +113,9 @@ final class ActivityTracker {
 
     /// Restart the current work block from now.
     func resetWork(now: Date = Date()) {
+        if state == .working {
+            onBlockEnded?(.working, stateStart, now)
+        }
         state = .working
         stateStart = now
         lastReminder = nil
@@ -123,6 +132,7 @@ final class ActivityTracker {
                 // The rest actually began at the last input event, not when we noticed it.
                 let restStart = now.addingTimeInterval(-idle)
                 lastWorkSeconds = max(0, restStart.timeIntervalSince(stateStart))
+                onBlockEnded?(.working, stateStart, restStart)
                 state = .resting
                 stateStart = restStart
                 lastReminder = nil
@@ -131,6 +141,7 @@ final class ActivityTracker {
             if idle < activeWindow {
                 let workStart = now.addingTimeInterval(-idle)
                 lastRestSeconds = max(0, workStart.timeIntervalSince(stateStart))
+                onBlockEnded?(.resting, stateStart, workStart)
                 state = .working
                 stateStart = workStart
                 lastReminder = nil

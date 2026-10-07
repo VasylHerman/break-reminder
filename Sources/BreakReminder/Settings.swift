@@ -17,6 +17,7 @@ enum Settings {
         static let outlineStyle = "outlineStyle"
         static let showUnit = "showUnit"          // 0.9 to 0.10, migrated into counterStyle
         static let counterStyle = "counterStyle"
+        static let showScore = "showScore"
         static let theme = "theme"
         static let smartPauseEnabled = "smartPauseEnabled"
         static let smartPauseCall = "smartPauseCall"
@@ -47,7 +48,8 @@ enum Settings {
             Key.reminderBody: defaultReminderBody,
             Key.warnBlink: true,
             Key.outlineStyle: OutlineStyle.spentClockwise.rawValue,
-            Key.counterStyle: CounterStyle.number.rawValue,
+            Key.counterStyle: CounterStyle.heart.rawValue,
+            Key.showScore: false,
             Key.theme: Theme.quiet.rawValue,
             Key.smartPauseEnabled: true,
             Key.smartPauseCall: true,
@@ -61,7 +63,7 @@ enum Settings {
     static func resetAll() {
         for key in [Key.workLimit, Key.restThreshold, Key.remindEvery, Key.sound, Key.warnBefore,
                     Key.pausedUntil, Key.reminderTitle, Key.reminderBody, Key.warnBlink,
-                    Key.outlineStyle, Key.showUnit, Key.counterStyle, Key.theme, Key.smartPauseEnabled, Key.smartPauseCall,
+                    Key.outlineStyle, Key.showUnit, Key.counterStyle, Key.showScore, Key.theme, Key.smartPauseEnabled, Key.smartPauseCall,
                     Key.smartPauseScreenShare, Key.smartPauseFullscreen, Key.smartPauseGrace] {
             defaults.removeObject(forKey: key)
         }
@@ -145,11 +147,21 @@ enum Settings {
         set { defaults.set(newValue.rawValue, forKey: Key.outlineStyle) }
     }
 
+    /// Show a heart filled to the week's on-time score next to the counter.
+    static var showScore: Bool {
+        get { defaults.bool(forKey: Key.showScore) }
+        set { defaults.set(newValue, forKey: Key.showScore) }
+    }
+
     /// What the menu bar item shows: the number with or without a unit, or only a dot.
     static var counterStyle: CounterStyle {
         get {
             if let raw = defaults.string(forKey: Key.counterStyle), let style = CounterStyle(rawValue: raw) { return style }
-            return defaults.bool(forKey: Key.showUnit) ? .numberWithUnit : .number
+            // Pre-0.11 installs chose a number style through the unit toggle; keep that choice.
+            if defaults.object(forKey: Key.showUnit) != nil {
+                return defaults.bool(forKey: Key.showUnit) ? .numberWithUnit : .number
+            }
+            return .heart
         }
         set { defaults.set(newValue.rawValue, forKey: Key.counterStyle) }
     }
@@ -168,7 +180,7 @@ enum Settings {
 
     /// Cheap fingerprint of every user setting, used to detect real changes.
     static var signature: String {
-        "\(workLimitMinutes)|\(restThresholdMinutes)|\(warnBeforeMinutes)|\(remindEveryMinutes)|\(notificationSound)|\(outlineStyle.rawValue)|\(counterStyle.rawValue)|\(theme.rawValue)"
+        "\(workLimitMinutes)|\(restThresholdMinutes)|\(warnBeforeMinutes)|\(remindEveryMinutes)|\(notificationSound)|\(outlineStyle.rawValue)|\(counterStyle.rawValue)|\(showScore)|\(theme.rawValue)"
     }
 
     static var workLimit: TimeInterval { TimeInterval(workLimitMinutes * 60) }
@@ -301,13 +313,16 @@ enum OutlineStyle: String, CaseIterable, Identifiable {
 
 /// What the menu bar item shows.
 enum CounterStyle: String, CaseIterable, Identifiable {
-    case numberWithUnit, number, hidden
+    case numberWithUnit, number, hidden, heart
     var id: String { rawValue }
     var label: String {
         switch self {
         case .numberWithUnit: return "Number with unit"
         case .number: return "Number"
-        case .hidden: return "Hidden, dot only"
+        case .hidden: return "Dot"
+        case .heart: return "Heart"
         }
     }
+    /// Glyph-only modes: no digits, the outline becomes a ring.
+    var isGlyph: Bool { self == .hidden || self == .heart }
 }

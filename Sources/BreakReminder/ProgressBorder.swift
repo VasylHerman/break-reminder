@@ -48,25 +48,31 @@ final class ProgressBorder {
 
     private var anchor: OutlineStyle.Anchor = .top
 
-    /// Diameter of the ring drawn around the dot when the counter is hidden.
-    static let ringDiameter: CGFloat = 14
+    /// Diameter of the ring drawn around the glyph when there are no digits. Set per glyph.
+    var ringDiameter: CGFloat = 14
 
     /// Fit the outline around the text, or draw a ring around the dot when there is no text.
+    /// The cell reports where it places the title and the image, which accounts for a leading heart.
     @objc private func layout() {
         guard let button, let title = button.attributedTitle as NSAttributedString? else { return }
+        let cell = button.cell as? NSButtonCell
         let rect: NSRect
         let radius: CGFloat
         if title.length == 0 {
-            let d = Self.ringDiameter
-            rect = NSRect(x: (button.bounds.width - d) / 2, y: (button.bounds.height - d) / 2, width: d, height: d)
+            // Ring around the dot: the dot sits at the right end of the image.
+            let d = ringDiameter
+            let imageRect = cell?.imageRect(forBounds: button.bounds) ?? button.bounds
+            let dotCenterX = imageRect.maxX - (d + 2) / 2
+            rect = NSRect(x: dotCenterX - d / 2, y: (button.bounds.height - d) / 2, width: d, height: d)
                 .insetBy(dx: shape.lineWidth / 2, dy: shape.lineWidth / 2)
             radius = rect.height / 2
         } else {
             let textSize = title.size()
             let width = ceil(textSize.width) + 8
             let height = ceil(textSize.height) + 2
+            let titleRect = cell?.titleRect(forBounds: button.bounds) ?? button.bounds
             rect = NSRect(
-                x: (button.bounds.width - width) / 2,
+                x: titleRect.midX - width / 2,
                 y: (button.bounds.height - height) / 2,
                 width: width,
                 height: height

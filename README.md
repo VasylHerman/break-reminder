@@ -6,8 +6,9 @@ and reminds you through Notification Center to take a break.
 - Work time is measured from system-wide keyboard, mouse and trackpad activity.
 - Rest starts after the input has been idle for 5 minutes (configurable). The work counter resets.
 - After 25 minutes of continuous work (configurable) a notification fires with a sound (Submarine by default), then repeats every 10 minutes until you rest.
-- The menu bar shows a plain minute counter (23, or 1:05 from an hour on). Settings can add the unit
-  or hide the number entirely, leaving a dot in the state color with the outline as a ring around it.
+- The menu bar item is a heart by default: it fills with the week's on-time share, takes the state
+  color, and the outline rings it. Settings can switch it to a dot, or to the minute counter
+  (23, or 1:05 from an hour on, optionally with the unit) wrapped by the outline.
   The default theme is monochrome: the number stays in the menu bar color and the outline
   carries the state, red only once you are over. The Signal theme adds orange for the warning
   and green for rest; Accent uses your macOS accent color.
@@ -23,6 +24,13 @@ and reminds you through Notification Center to take a break.
   default). Each trigger is a toggle. Focus modes are not detected since macOS reveals them only
   to apps with Full Disk Access. After a pause ends, an overdue
   reminder waits a 2 minute grace period.
+
+- Stats (⌘S from the menu): focused and rest time, longest block, breaks taken of due, on-time share,
+  good days and streak, for today, the calendar week and the calendar month. An optional heart
+  next to the counter fills with the week's on-time share. A break is on time when
+  a rest starts within 5 minutes of the limit, half when within 15. Breaks held by Smart Pause are
+  not counted against you. History lives in `~/Library/Application Support/BreakReminder/history.json`:
+  daily totals for 62 days and break events for 14 days, older data is dropped automatically.
 
 No Accessibility or Input Monitoring permission is needed. The app only reads the system idle
 time (`CGEventSource.secondsSinceLastEventType`), never individual keystrokes or pointer events.
@@ -67,8 +75,10 @@ The bundle is ad-hoc signed, which is enough for local use. Nothing is uploaded 
 | Item | What it does |
 | --- | --- |
 | Working for / Resting for | Current counter and the configured limit |
+| Breaks this week | Breaks taken of breaks due in the calendar week |
 | Last work block / Last rest | Length of the previous period, for a quick sanity check |
-| Reset Work Timer | Start the current work block from zero |
+| Reset Work Timer | Start the current work block from zero. A pending break counts as skipped |
+| Stats… | Opens the Stats window (⌘S) |
 | Pause Reminders | Silence reminders for 30 minutes, 1 hour, 2 hours or until tomorrow. The counter keeps running. A Resume item appears while paused |
 | Work Limit | 25, 30, 45, 60, 90 minutes, or Custom… which opens Settings |
 | Rest Counts After Idle | 2, 3, 5, 10 minutes, or Custom… which opens Settings |
@@ -80,7 +90,7 @@ The bundle is ad-hoc signed, which is enough for local use. Nothing is uploaded 
 | Tab | Options |
 | --- | --- |
 | General | Launch at login. Work limit, rest threshold and warn-before minutes as steppers |
-| Appearance | Live preview, theme (Quiet, Signal, Accent), counter (number with unit, number, hidden dot), outline mode, and under Advanced the outline direction and blink |
+| Appearance | Live preview, theme (Quiet, Signal, Accent), counter (number with unit, number, dot, heart), outline mode, weekly score heart beside the counter, and under Advanced the outline direction and blink |
 | Reminders | Repeat interval, editable title and message with `{minutes}` and `{rest}` placeholders, sound picker that previews on change, Send Test Notification |
 | Smart Pause | Master switch, the three triggers with a live "Now" indicator when detected, and the grace period |
 | About | Version, install method, feedback and project links, copy the Homebrew install command, Reset All Settings |
@@ -110,6 +120,10 @@ Sources/BreakReminder/
   ActivityTracker.swift  work/rest state machine on top of system idle time
   Notifier.swift         Notification Center banners (osascript fallback for `swift run`)
   SmartPause.swift       call, screen share and fullscreen detection
+  History.swift          on-disk daily totals and break events with retention
+  Stats.swift            day, week and month aggregation
+  StatsView.swift        Stats window content
+  StatsWindowController.swift
   Settings.swift         UserDefaults-backed options
   SettingsView.swift     SwiftUI settings panes (General, Appearance, Reminders, Smart Pause, About)
   Theme.swift            curated menu bar color themes

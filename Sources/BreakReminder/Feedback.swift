@@ -10,6 +10,7 @@ enum Feedback {
 
     /// Set by the app delegate so reports can include the current timer state.
     static var snapshotProvider: () -> ActivityTracker.Snapshot? = { nil }
+    static var blockStartProvider: () -> Date? = { nil }
 
     static var versionString: String {
         guard let short = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String else { return "dev" }

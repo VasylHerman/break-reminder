@@ -75,7 +75,8 @@ struct AppearanceSettingsView: View {
     @AppStorage(Settings.Key.warnBefore) private var warnBefore = 5
     @AppStorage(Settings.Key.theme) private var theme = Theme.quiet.rawValue
     @AppStorage(Settings.Key.outlineStyle) private var outlineStyle = OutlineStyle.spentClockwise.rawValue
-    @AppStorage(Settings.Key.counterStyle) private var counterStyle = CounterStyle.number.rawValue
+    @AppStorage(Settings.Key.counterStyle) private var counterStyle = CounterStyle.heart.rawValue
+    @AppStorage(Settings.Key.showScore) private var showScore = false
     @AppStorage(Settings.Key.warnBlink) private var warnBlink = true
     @State private var advancedExpanded = false
 
@@ -91,6 +92,7 @@ struct AppearanceSettingsView: View {
                     theme: currentTheme,
                     style: currentStyle,
                     counterStyle: currentCounter,
+                    score: showScore || currentCounter == .heart ? previewScore : nil,
                     blink: warnBlink,
                     workLimit: workLimit,
                     warnBefore: warnBefore
@@ -113,9 +115,10 @@ struct AppearanceSettingsView: View {
                 Picker("Outline shows", selection: outlineMode) {
                     ForEach(OutlineStyle.Mode.allCases) { Text($0.label).tag($0) }
                 }
-                Text(currentCounter == .hidden
-                     ? "A dot in the state color, with the outline as a ring around it. The exact time is in the menu and the tooltip."
-                     : "The outline wraps the number and closes in red once the limit is reached.")
+                if currentCounter != .heart {
+                    Toggle("Weekly score heart beside the counter", isOn: $showScore)
+                }
+                Text(caption)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 DisclosureGroup("Advanced", isExpanded: $advancedExpanded) {
@@ -135,6 +138,25 @@ struct AppearanceSettingsView: View {
         .formStyle(.grouped)
         .scrollDisabled(true)
         .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var caption: String {
+        switch currentCounter {
+        case .heart:
+            return "The heart fills with this week's on-time share and takes the state color; the outline rings it. "
+                + "The exact time and share are in the menu and the tooltip."
+        case .hidden:
+            return "A dot in the state color, with the outline as a ring around it. The exact time is in the menu and the tooltip."
+        default:
+            return showScore
+                ? "The heart beside the counter fills with this week's on-time share, shown once a break has been due."
+                : "The outline wraps the number and closes in red once the limit is reached."
+        }
+    }
+
+    /// This week's real score when there is one, otherwise a sample so the heart is visible.
+    private var previewScore: Double {
+        Stats.summary(period: .week, history: History.shared, live: nil, blockStart: nil).adherence ?? 0.75
     }
 
     private var outlineMode: Binding<OutlineStyle.Mode> {

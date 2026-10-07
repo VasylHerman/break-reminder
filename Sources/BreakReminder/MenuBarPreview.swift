@@ -6,6 +6,8 @@ struct MenuBarPreview: View {
     let theme: Theme
     let style: OutlineStyle
     let counterStyle: CounterStyle
+    /// Weekly score to show as a heart, nil hides it.
+    let score: Double?
     let blink: Bool
     let workLimit: Int
     let warnBefore: Int
@@ -31,7 +33,22 @@ struct MenuBarPreview: View {
             let opacity = blinkOpacity(t: t, active: blink && !reduceMotion && (warning || over), fast: over)
 
             HStack(spacing: 14) {
-                if counterStyle == .hidden {
+                if let score, counterStyle != .heart {
+                    ScoreHeartView(fill: score)
+                        .foregroundStyle(textColor)
+                        .padding(.trailing, -9)
+                        .opacity(opacity)
+                }
+                if counterStyle == .heart {
+                    ScoreHeartView(fill: score ?? 0)
+                        .foregroundStyle(phase == .working ? Color.secondary : outlineColor)
+                        .frame(width: 20, height: 20)
+                        .overlay {
+                            Outline(stroke: outlineStroke(progress: progress, over: over), circular: true)
+                                .stroke(outlineColor, style: StrokeStyle(lineWidth: highContrast ? 2.5 : 1.5, lineCap: .round))
+                        }
+                        .opacity(opacity)
+                } else if counterStyle == .hidden {
                     Circle()
                         .fill(phase == .working ? Color.secondary : outlineColor)
                         .frame(width: 6, height: 6)
@@ -112,5 +129,25 @@ private struct Outline: Shape {
             p.addLine(to: CGPoint(x: r.midX, y: r.maxY))
         }
         return p.trimmedPath(from: stroke.start, to: stroke.end)
+    }
+}
+
+/// SwiftUI twin of `ScoreHeart.image`: outline heart with a fill rising to `fill`.
+struct ScoreHeartView: View {
+    let fill: Double
+
+    var body: some View {
+        ZStack {
+            Image(systemName: "heart.fill")
+                .mask(alignment: .bottom) {
+                    GeometryReader { geo in
+                        Rectangle()
+                            .frame(height: geo.size.height * CGFloat(min(max(fill, 0), 1)))
+                            .frame(maxHeight: .infinity, alignment: .bottom)
+                    }
+                }
+            Image(systemName: "heart")
+        }
+        .font(.system(size: 11, weight: .medium))
     }
 }

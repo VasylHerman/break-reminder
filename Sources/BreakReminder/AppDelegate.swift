@@ -13,6 +13,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var progressBorder: ProgressBorder?
     private var lastSnapshot: ActivityTracker.Snapshot?
     private lazy var settingsWindow = SettingsWindowController()
+    private lazy var statsWindow = StatsWindowController()
+    private let history = History.shared
+    private var dueRecordedFor: Date?
     private var appliedSettings = Settings.signature
     private var smartPauseReason: SmartPauseReason?
     private var smartPauseEndedAt: Date?
@@ -21,6 +24,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let lastWorkLine = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private let lastRestLine = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private let pausedLine = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+    private let breaksLine = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private let resumeItem = NSMenuItem(title: "Resume Reminders", action: #selector(resumeReminders), keyEquivalent: "")
     private let workLimitMenu = NSMenu()
     private let restThresholdMenu = NSMenu()
@@ -28,7 +32,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         Settings.registerDefaults()
         tracker = ActivityTracker(restThreshold: Settings.restThreshold, pollInterval: Self.pollInterval)
+        tracker.onBlockEnded = { [weak self] state, start, end in
+            guard let self else { return }
+            switch state {
+            case .working:
+                self.history.recordWork(start: start, end: end)
+            case .resting:
+                self.history.recordRest(start: start, end: end)
+            }
+            if state == .working {
+                // A rest begins where the work block ended.
+                self.history.restStarted(at: end)
+            }
+        }
         Feedback.snapshotProvider = { [weak self] in self?.lastSnapshot }
+        Feedback.blockStartProvider = { [weak self] in self?.tracker.currentBlockStart }
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         statusItem.menu = buildMenu()
@@ -73,7 +91,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         lastSnapshot = snapshot
         updateSmartPause(now: now)
         updateStatusItem(snapshot)
+        recordDueIfNeeded(snapshot, now: now)
         remindIfNeeded(snapshot, now: now)
+    }
+
+    /// Logs one "break due" event per work block when the limit is reached, and expires stale ones.
+    private func recordDueIfNeeded(_ snapshot: ActivityTracker.Snapshot, now: Date) {
+        history.expirePending(now: now)
+        guard snapshot.state == .working, snapshot.currentSeconds >= Settings.workLimit else { return }
+        let blockStart = tracker.currentBlockStart
+        if dueRecordedFor != blockStart {
+            dueRecordedFor = blockStart
+            history.breakDue(at: now, held: smartPauseReason != nil)
+        }
     }
 
     private func updateSmartPause(now: Date) {
@@ -169,14 +199,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let color = theme.textColor(for: phase)
         let borderColor = theme.outlineColor(for: phase, highContrast: NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast)
 
-        button.toolTip = "\(description): \(TimeFormat.minutes(snapshot.currentSeconds))"
+        var tooltip = "\(description): \(TimeFormat.minutes(snapshot.currentSeconds))"
 
-        if counterStyle == .hidden {
+        // Weekly score: a heart beside the counter, or the counter itself.
+        let week = Stats.summary(period: .week, history: history, live: snapshot, blockStart: tracker.currentBlockStart)
+        if let adherence = week.adherence {
+            tooltip += "\nOn time this week: \(Int((adherence * 100).rounded()))%"
+        }
+        var heart: NSImage?
+        if Settings.showScore, counterStyle != .heart, let adherence = week.adherence {
+            heart = ScoreHeart.image(fill: adherence, color: color)
+        }
+        button.toolTip = tooltip
+        button.imagePosition = .imageLeading
+
+        if counterStyle == .heart {
+            // The heart is the item: fill is the score, color is the state, the outline rings it.
+            button.attributedTitle = NSAttributedString(string: "")
+            let glyphColor: NSColor = phase == .working ? .secondaryLabelColor : borderColor
+            progressBorder?.ringDiameter = 20
+            button.image = ScoreHeart.canvas(fill: week.adherence ?? 0, color: glyphColor, canvas: 22)
+        } else if counterStyle == .hidden {
             // Dot in the state color, with the outline drawn as a ring around it.
             button.attributedTitle = NSAttributedString(string: "")
-            button.image = Self.dotImage(color: phase == .working ? .secondaryLabelColor : borderColor)
+            progressBorder?.ringDiameter = 14
+            let dot = Self.dotImage(color: phase == .working ? .secondaryLabelColor : borderColor)
+            button.image = heart.map { ScoreHeart.compose(heart: $0, with: dot) } ?? dot
         } else {
-            button.image = nil
+            button.image = heart
             button.attributedTitle = NSAttributedString(
                 string: time,
                 attributes: [.foregroundColor: color, .font: Self.counterFont]
@@ -191,7 +241,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     /// A 6 pt filled circle on a canvas the size of the ring, so the status item is wide enough for both.
     /// Dynamic colors resolve when the image is drawn, so it follows the menu bar appearance.
     private static func dotImage(color: NSColor) -> NSImage {
-        let canvas = ProgressBorder.ringDiameter + 2
+        let canvas: CGFloat = 16
         let image = NSImage(size: NSSize(width: canvas, height: canvas), flipped: false) { rect in
             color.setFill()
             NSBezierPath(ovalIn: rect.insetBy(dx: (canvas - 6) / 2, dy: (canvas - 6) / 2)).fill()
@@ -219,7 +269,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let menu = NSMenu()
         menu.delegate = self
 
-        for line in [stateLine, lastWorkLine, lastRestLine, pausedLine] {
+        for line in [stateLine, lastWorkLine, lastRestLine, breaksLine, pausedLine] {
             line.isEnabled = false
             menu.addItem(line)
         }
@@ -264,6 +314,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(.separator())
 
         // Own group: macOS decorates "Settings…" with an icon and would indent its neighbours.
+        menu.addItem(NSMenuItem(title: "Stats…", action: #selector(openStats), keyEquivalent: "s"))
         menu.addItem(NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ","))
         menu.addItem(.separator())
 
@@ -295,6 +346,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         lastWorkLine.title = "Last work block: " + (snapshot.lastWorkSeconds.map(TimeFormat.minutes) ?? "–")
         lastRestLine.title = "Last rest: " + (snapshot.lastRestSeconds.map(TimeFormat.minutes) ?? "–")
+        let week = Stats.summary(period: .week, history: history, live: snapshot, blockStart: tracker.currentBlockStart)
+        breaksLine.title = week.due > 0 ? "Breaks this week: \(week.taken) of \(week.due)" : "No breaks due yet this week"
 
         if let until = Settings.remindersPausedUntil {
             let formatter = DateFormatter()
@@ -324,8 +377,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // MARK: - Actions
 
     @objc private func resetWork() {
+        history.expirePending(now: Date(), reset: true)
         tracker.resetWork()
         tick()
+    }
+
+    @objc private func openStats() {
+        statsWindow.show()
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        history.save()
     }
 
     @objc private func openSettings() {
