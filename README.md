@@ -9,6 +9,8 @@ and reminds you through Notification Center to take a break.
 - The menu bar shows a plain minute counter, colored by state: default while working,
   orange in the last 5 minutes before the limit (configurable), red once you are over it,
   green while resting.
+- During the warning the counter blinks, and the pace follows the minutes left: every 5 seconds
+  at 5 minutes, every second at 1 minute and past the limit. Can be turned off in Settings.
 
 No Accessibility or Input Monitoring permission is needed. The app only reads the system idle
 time (`CGEventSource.secondsSinceLastEventType`), never individual keystrokes or pointer events.
@@ -65,7 +67,7 @@ The bundle is ad-hoc signed, which is enough for local use. Nothing is uploaded 
 
 | Tab | Options |
 | --- | --- |
-| General | Launch at login. Work limit, rest threshold and warn-before minutes as steppers |
+| General | Launch at login. Work limit, rest threshold and warn-before minutes as steppers. Blink toggle for the warning |
 | Reminders | Repeat interval, editable title and message with `{minutes}` and `{rest}` placeholders, sound picker that previews on change, Send Test Notification |
 | About | Version, install method, feedback and project links, copy the Homebrew install command |
 

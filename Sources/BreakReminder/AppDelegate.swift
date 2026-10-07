@@ -6,6 +6,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private var statusItem: NSStatusItem!
     private var timer: Timer?
+    private var blinkTimer: Timer?
+    private var lastBlink = Date.distantPast
     private let notifier = Notifier.shared
     private var tracker: ActivityTracker!
     private var lastSnapshot: ActivityTracker.Snapshot?
@@ -35,6 +37,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let timer = Timer(timeInterval: Self.pollInterval, repeats: true) { [weak self] _ in self?.tick() }
         RunLoop.main.add(timer, forMode: .common)
         self.timer = timer
+
+        // Blink scheduler: checks every second whether the warning effect is due.
+        let blinkTimer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in self?.blinkIfDue() }
+        RunLoop.main.add(blinkTimer, forMode: .common)
+        self.blinkTimer = blinkTimer
 
         // Settings changed in the window apply immediately.
         NotificationCenter.default.addObserver(
@@ -72,6 +79,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         appliedSettings = Settings.signature
         tracker.restThreshold = Settings.restThreshold
         tick()
+    }
+
+    // MARK: - Warning blink
+
+    /// Seconds between blinks: the number of minutes left before the limit (5m left -> every 5s),
+    /// 1s at and past the limit. Nil when no blink is due.
+    private func blinkPeriod(now: Date) -> TimeInterval? {
+        guard Settings.warnBlink, Settings.warnBefore > 0,
+              let snapshot = lastSnapshot, snapshot.state == .working,
+              Settings.remindersPausedUntil == nil
+        else { return nil }
+        let elapsed = snapshot.currentSeconds + now.timeIntervalSince(snapshot.takenAt)
+        let remaining = Settings.workLimit - elapsed
+        guard remaining <= Settings.warnBefore else { return nil }
+        return max(1, ceil(remaining / 60))
+    }
+
+    private func blinkIfDue() {
+        let now = Date()
+        guard let period = blinkPeriod(now: now), now.timeIntervalSince(lastBlink) >= period - 0.1 else { return }
+        lastBlink = now
+        guard let button = statusItem.button else { return }
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = 0.2
+            button.animator().alphaValue = 0.25
+        }, completionHandler: {
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0.2
+                button.animator().alphaValue = 1
+            }
+        })
     }
 
     // MARK: - Status bar

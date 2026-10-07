@@ -13,6 +13,7 @@ enum Settings {
         static let pausedUntil = "remindersPausedUntil"
         static let reminderTitle = "reminderTitle"
         static let reminderBody = "reminderBody"
+        static let warnBlink = "warnBlink"
     }
 
     static let defaultReminderTitle = "Time for a break"
@@ -35,6 +36,7 @@ enum Settings {
             Key.warnBefore: 5,
             Key.reminderTitle: defaultReminderTitle,
             Key.reminderBody: defaultReminderBody,
+            Key.warnBlink: true,
         ])
     }
 
@@ -79,6 +81,12 @@ enum Settings {
             return date
         }
         set { defaults.set(newValue, forKey: Key.pausedUntil) }
+    }
+
+    /// Blink the menu bar counter during the warning window and past the limit.
+    static var warnBlink: Bool {
+        get { defaults.bool(forKey: Key.warnBlink) }
+        set { defaults.set(newValue, forKey: Key.warnBlink) }
     }
 
     /// Name of the alert sound played with each reminder. Empty string means silent.

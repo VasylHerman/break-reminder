@@ -27,6 +27,7 @@ struct GeneralSettingsView: View {
     @AppStorage(Settings.Key.workLimit) private var workLimit = 45
     @AppStorage(Settings.Key.restThreshold) private var restThreshold = 5
     @AppStorage(Settings.Key.warnBefore) private var warnBefore = 5
+    @AppStorage(Settings.Key.warnBlink) private var warnBlink = true
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
     @State private var launchAtLoginError: String?
 
@@ -44,7 +45,11 @@ struct GeneralSettingsView: View {
                 StepperRow(label: "Rest counts after idle", value: "\(restThreshold) min", number: $restThreshold, range: 1...60)
                 StepperRow(label: "Warn before limit", value: warnBefore == 0 ? "Off" : "\(warnBefore) min",
                            number: $warnBefore, range: 0...60)
+                Toggle("Blink the counter during the warning", isOn: $warnBlink)
+                    .disabled(warnBefore == 0)
                 Text("The counter turns orange when the warning starts and red once the limit is reached. "
+                     + "While blinking, the pace follows the minutes left: every 5 seconds at 5 minutes, "
+                     + "every second at 1 minute and past the limit. "
                      + "Rest begins after the keyboard, mouse and trackpad have been idle for the rest threshold.")
                     .font(.caption)
                     .foregroundStyle(.secondary)

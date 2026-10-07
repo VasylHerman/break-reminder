@@ -22,6 +22,8 @@ final class ActivityTracker {
         let lastRestSeconds: TimeInterval?
         /// Raw system idle time at the moment of the snapshot.
         let idleSeconds: TimeInterval
+        /// When the snapshot was taken.
+        let takenAt: Date
     }
 
     /// Idle time at or above which the user is considered resting.
@@ -141,7 +143,8 @@ final class ActivityTracker {
             currentSeconds: max(0, now.timeIntervalSince(stateStart)),
             lastWorkSeconds: lastWorkSeconds,
             lastRestSeconds: lastRestSeconds,
-            idleSeconds: idle
+            idleSeconds: idle,
+            takenAt: now
         )
     }
 }
