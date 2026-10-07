@@ -58,6 +58,11 @@ and reminds you through Notification Center to take a break.
   rest and whatever was not recovered starts the next block's arc. Reminders and the limit are
   unaffected.
 
+- Updates. Once a day the app checks the latest GitHub release. With Homebrew installs it upgrades
+  itself through `brew upgrade` at the next rest and restarts in the same state; the menu shows
+  "Update to x.y.z…" to do it right away. Both are toggles in Settings › General. Copies not
+  installed with Homebrew get a link to the release page.
+
 No Accessibility or Input Monitoring permission is needed. The app only reads the system idle
 time (`CGEventSource.secondsSinceLastEventType`), never individual keystrokes or pointer events.
 The only prompt you will see is the standard notification permission dialog on first launch.
@@ -118,7 +123,7 @@ The bundle is ad-hoc signed, which is enough for local use. Nothing is uploaded 
 
 | Tab | Options |
 | --- | --- |
-| General | Launch at login. Work limit, rest threshold and warn-before minutes as steppers |
+| General | Launch at login. Daily update check and automatic install while resting. Work limit, rest threshold and warn-before minutes as steppers |
 | Appearance | Live preview, theme (Quiet, Signal, Accent), show as (minutes with unit, minutes, dot, heart), outline mode, weekly score heart beside it, and under Advanced the outline direction and blink |
 | Reminders | Firmness (Automatic, Gentle, Normal, Firm), repeat interval, suggested activities with category toggles and your own lines, or editable title and message with `{minutes}` and `{rest}` placeholders, sound picker that previews on change, Send Test Notification |
 | Smart Pause | Master switch, the three triggers with a live "Now" indicator when detected, and the grace period |
@@ -150,6 +155,7 @@ Sources/BreakReminder/
   Notifier.swift         Notification Center banners (osascript fallback for `swift run`)
   BreakActivities.swift  suggested break activities and the picking rules
   SmartPause.swift       call, screen share and fullscreen detection
+  Updater.swift          daily release check and Homebrew self-update
   Firmness.swift         firmness levels and the automatic mapping from the weekly score
   History.swift          on-disk daily totals and break events with retention
   Stats.swift            day, week and month aggregation

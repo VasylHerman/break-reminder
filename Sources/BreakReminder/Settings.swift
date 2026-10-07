@@ -39,6 +39,10 @@ enum Settings {
         static let smartPauseScreenShare = "smartPauseScreenShare"
         static let smartPauseFullscreen = "smartPauseFullscreen"
         static let smartPauseGrace = "smartPauseGraceMinutes"
+        static let checkForUpdates = "checkForUpdates"
+        static let autoInstallUpdates = "autoInstallUpdates"
+        static let lastUpdateCheck = "lastUpdateCheck"
+        static let latestKnownVersion = "latestKnownVersion"
         static let firmnessMode = "firmnessMode"
         static let autoFirmness = "autoFirmness"
         static let autoFirmnessDay = "autoFirmnessDay"
@@ -89,6 +93,8 @@ enum Settings {
             Key.smartPauseScreenShare: true,
             Key.smartPauseFullscreen: false,
             Key.smartPauseGrace: 2,
+            Key.checkForUpdates: true,
+            Key.autoInstallUpdates: true,
             Key.firmnessMode: FirmnessMode.automatic.rawValue,
             Key.autoFirmness: Firmness.normal.rawValue,
         ])
@@ -104,6 +110,7 @@ enum Settings {
                     Key.beatBody, Key.beatLevel, Key.beatArc,
                     Key.outlineStyle, Key.outlineSpan, Key.showUnit, Key.counterStyle, Key.showScore, Key.theme, Key.smartPauseEnabled, Key.smartPauseCall,
                     Key.smartPauseScreenShare, Key.smartPauseFullscreen, Key.smartPauseGrace,
+                    Key.checkForUpdates, Key.autoInstallUpdates, Key.lastUpdateCheck, Key.latestKnownVersion,
                     Key.firmnessMode, Key.autoFirmness, Key.autoFirmnessDay, Key.autoSteppedDown,
                     Key.steppedDownCardDay] {
             defaults.removeObject(forKey: key)
@@ -203,6 +210,25 @@ enum Settings {
         set { defaults.set(newValue, forKey: Key.smartPauseGrace) }
     }
     static var smartPauseGrace: TimeInterval { TimeInterval(smartPauseGraceMinutes * 60) }
+
+    // Updates.
+    static var checkForUpdates: Bool {
+        get { defaults.bool(forKey: Key.checkForUpdates) }
+        set { defaults.set(newValue, forKey: Key.checkForUpdates) }
+    }
+    /// Install a newer version through Homebrew at the next rest, without asking.
+    static var autoInstallUpdates: Bool {
+        get { defaults.bool(forKey: Key.autoInstallUpdates) }
+        set { defaults.set(newValue, forKey: Key.autoInstallUpdates) }
+    }
+    static var lastUpdateCheck: Date? {
+        get { defaults.object(forKey: Key.lastUpdateCheck) as? Date }
+        set { defaults.set(newValue, forKey: Key.lastUpdateCheck) }
+    }
+    static var latestKnownVersion: String? {
+        get { defaults.string(forKey: Key.latestKnownVersion) }
+        set { defaults.set(newValue, forKey: Key.latestKnownVersion) }
+    }
 
     // Firmness.
     static var firmnessMode: FirmnessMode {

@@ -1,0 +1,76 @@
+name: Release
+
+# On a version tag: publish the GitHub release from CHANGELOG.md, verify the tag tarball, and bump the
+# Homebrew formula in the tap. The tap's own workflow then builds and publishes bottles.
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Version
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+
+      - name: Release notes from CHANGELOG.md
+        run: |
+          python3 - "$VERSION" > notes.md <<'PY'
+          import re, sys
+          version = sys.argv[1]
+          text = open("CHANGELOG.md").read()
+          m = re.search(r"^## " + re.escape(version) + r"\b.*?\n(.*?)(?=^## |\Z)", text, re.S | re.M)
+          body = (m.group(1).strip() if m else "") or f"Release {version}."
+          print(body)
+          PY
+          echo "**Full Changelog**: https://github.com/${GITHUB_REPOSITORY}/compare/$(git describe --tags --abbrev=0 "${GITHUB_REF_NAME}^" 2>/dev/null || echo v0.1.0)...${GITHUB_REF_NAME}" >> notes.md
+          cat notes.md
+
+      - name: Publish the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 \
+            || gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file notes.md
+
+      - name: Verify the tag tarball and compute its checksum
+        run: |
+          url="https://github.com/${GITHUB_REPOSITORY}/archive/refs/tags/${GITHUB_REF_NAME}.tar.gz"
+          for attempt in 1 2 3 4 5; do
+            code=$(curl -sL -o src.tar.gz -w '%{http_code}' "$url")
+            if [ "$code" = "200" ] && tar -tzf src.tar.gz >/dev/null 2>&1; then break; fi
+            echo "attempt $attempt: http $code"; sleep 15
+          done
+          tar -tzf src.tar.gz >/dev/null
+          echo "SHA256=$(sha256sum src.tar.gz | cut -d' ' -f1)" >> "$GITHUB_ENV"
+          echo "URL=$url" >> "$GITHUB_ENV"
+
+      - name: Bump the formula in the tap
+        env:
+          TAP_DEPLOY_KEY: ${{ secrets.TAP_DEPLOY_KEY }}
+        run: |
+          mkdir -p ~/.ssh && echo "$TAP_DEPLOY_KEY" > ~/.ssh/tap && chmod 600 ~/.ssh/tap
+          ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null
+          export GIT_SSH_COMMAND="ssh -i ~/.ssh/tap -o IdentitiesOnly=yes"
+          git clone --depth 1 git@github.com:VasylHerman/homebrew-tap.git tap
+          cd tap
+          python3 - "$URL" "$SHA256" <<'PY'
+          import re, sys, pathlib
+          url, sha = sys.argv[1], sys.argv[2]
+          p = pathlib.Path("Formula/break-reminder.rb"); s = p.read_text()
+          s = re.sub(r'\n  url ".*?"', f'\n  url "{url}"', s, count=1)
+          s = re.sub(r'(\n  sha256 ")[0-9a-f]{64}(")', lambda m: m.group(1) + sha + m.group(2), s, count=1)
+          s = re.sub(r"\n  bottle do\n.*?\n  end\n", "\n", s, flags=re.S)   # the tap's workflow writes a fresh one
+          s = re.sub(r"\n\n\n+", "\n\n", s)
+          p.write_text(s)
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "fix(formula): update break-reminder to $VERSION"
+          git push origin HEAD:main

@@ -26,6 +26,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let pausedLine = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private let breaksLine = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private let firmnessLine = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+    private let updateItem = NSMenuItem(title: "", action: #selector(installUpdate), keyEquivalent: "")
     private let resumeItem = NSMenuItem(title: "Resume Reminders", action: #selector(resumeReminders), keyEquivalent: "")
     private let workLimitMenu = NSMenu()
     private let restThresholdMenu = NSMenu()
@@ -100,6 +101,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             name: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification, object: nil
         )
 
+        // Update check: a minute after launch, then daily from the tick.
+        Updater.shared.onChange = { [weak self] in self?.refreshUpdateItem() }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 60) { Updater.shared.checkIfDue() }
+
         // `open BreakReminder.app --args --settings` opens the window at launch; handy for development.
         if CommandLine.arguments.contains("--settings") {
             openSettings()
@@ -125,6 +130,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         lastSnapshot = snapshot
         updateSmartPause(now: now)
         evaluateFirmnessIfDue(now: now)
+        Updater.shared.checkIfDue()
+        if Settings.autoInstallUpdates, snapshot.state == .resting, case .available = Updater.shared.state {
+            // Install while resting, never mid-block.
+            Updater.shared.install()
+        }
         updateStatusItem(snapshot)
         recordDueIfNeeded(snapshot, now: now)
         remindIfNeeded(snapshot, now: now)
@@ -459,6 +469,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(.separator())
 
         // Own group: macOS decorates "Settings…" with an icon and would indent its neighbours.
+        updateItem.isHidden = true
+        menu.addItem(updateItem)
         menu.addItem(NSMenuItem(title: "Stats…", action: #selector(openStats), keyEquivalent: "s"))
         menu.addItem(NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ","))
         menu.addItem(.separator())
@@ -553,6 +565,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func openSettings() {
         settingsWindow.show(pane: .general)
+    }
+
+    @objc private func installUpdate() {
+        switch Updater.shared.state {
+        case .available: Updater.shared.install()
+        case .failed: Updater.shared.openReleasePage()
+        default: break
+        }
+    }
+
+    private func refreshUpdateItem() {
+        switch Updater.shared.state {
+        case .idle:
+            updateItem.isHidden = true
+        case .available(let v):
+            updateItem.title = Updater.installedWithHomebrew ? "Update to \(v)…" : "Version \(v) is available…"
+            updateItem.isHidden = false
+            updateItem.isEnabled = true
+        case .installing(let v):
+            updateItem.title = "Installing \(v)…"
+            updateItem.isHidden = false
+            updateItem.isEnabled = false
+        case .installed(let v):
+            updateItem.title = "Restarting with \(v)…"
+            updateItem.isEnabled = false
+        case .failed(let v):
+            updateItem.title = "Update to \(v) failed, open release page…"
+            updateItem.isHidden = false
+            updateItem.isEnabled = true
+        }
     }
 
     @objc private func setWorkLimit(_ sender: NSMenuItem) {

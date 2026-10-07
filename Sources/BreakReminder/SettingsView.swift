@@ -28,6 +28,8 @@ struct GeneralSettingsView: View {
     @AppStorage(Settings.Key.restThreshold) private var restThreshold = 5
     @AppStorage(Settings.Key.warnBefore) private var warnBefore = 5
     @AppStorage(Settings.Key.carryOverRest) private var carryOverRest = false
+    @AppStorage(Settings.Key.checkForUpdates) private var checkForUpdates = true
+    @AppStorage(Settings.Key.autoInstallUpdates) private var autoInstallUpdates = true
     @State private var launchAtLogin = LoginItem.isEnabled
     @State private var launchAtLoginError: String?
 
@@ -43,6 +45,16 @@ struct GeneralSettingsView: View {
                 if let launchAtLoginError {
                     Text(launchAtLoginError).font(.caption).foregroundStyle(.red)
                 }
+            }
+            Section("Updates") {
+                Toggle("Check for updates daily", isOn: $checkForUpdates)
+                Toggle("Install updates automatically while resting", isOn: $autoInstallUpdates)
+                    .disabled(!checkForUpdates)
+                Text(Updater.installedWithHomebrew
+                     ? "Updates install through Homebrew in seconds and the app restarts in the same state. Installed: \(Updater.currentVersion)."
+                     : "This copy was not installed with Homebrew, so updates open the release page instead. Installed: \(Updater.currentVersion).")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
             Section("Timer") {
                 StepperRow(label: "Work limit", value: "\(workLimit) min", number: $workLimit, range: 5...240, step: 5)
