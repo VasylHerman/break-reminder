@@ -13,4 +13,15 @@ enum LoginItem {
             try SMAppService.mainApp.unregister()
         }
     }
+
+    /// Turns launch at login on the first time an installed copy runs. Only once, so turning it off
+    /// later sticks, and only for a bundle in a permanent place: Homebrew's Cellar or /Applications.
+    static func enableOnFirstRun() {
+        guard !Settings.loginItemOffered else { return }
+        let path = Bundle.main.bundlePath
+        guard path.contains("/Cellar/") || path.hasPrefix("/Applications/") else { return }
+        Settings.loginItemOffered = true
+        guard SMAppService.mainApp.status == .notRegistered else { return }
+        try? SMAppService.mainApp.register()
+    }
 }

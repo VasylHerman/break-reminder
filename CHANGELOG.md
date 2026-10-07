@@ -3,6 +3,14 @@
 Release notes are taken from this file by the Release workflow: the section whose heading
 matches the tag becomes the GitHub release body.
 
+## Unreleased
+
+### Changed
+- Launch at login is turned on the first time an installed copy runs, from Homebrew or /Applications.
+  Turning it off in Settings sticks.
+- Reminders always suggest an activity. The "My own text" style and the "My own" activity lines are gone;
+  the optional prefix stays, and with every category off the plain reminder is used.
+
 ## 0.20.2
 
 ### Changed

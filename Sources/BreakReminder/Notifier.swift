@@ -78,7 +78,7 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
         send(title: title, body: body, sound: Settings.notificationSound)
     }
 
-    /// Title and body for a reminder: a suggested activity, or the user's own templates.
+    /// Title and body for a reminder: a suggested activity with an optional prefix in front.
     static func reminderText(minutes: Int, repeated: Bool) -> (title: String, body: String) {
         func fill(_ template: String) -> String {
             template
@@ -87,9 +87,7 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
         }
         let prefix = fill(Settings.reminderTitle).trimmingCharacters(in: .whitespaces)
 
-        if Settings.suggestsActivities,
-           let activity = BreakActivities.pick(enabled: Settings.activityCategories, custom: Settings.customActivities,
-                                               recent: Settings.recentActivities) {
+        if let activity = BreakActivities.pick(enabled: Settings.activityCategories, recent: Settings.recentActivities) {
             Settings.recentActivities = Settings.recentActivities + [activity.title]
             // The activity is the headline; an optional prefix from Settings goes in front.
             let headline = prefix.isEmpty ? activity.title : "\(prefix) · \(activity.title)"
@@ -102,8 +100,9 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
             if Settings.activityWhy, !activity.why.isEmpty { body += " " + activity.why }
             return (title: headline, body: body)
         }
+        // Every category off, or nothing fits right now: the plain reminder.
         let title = prefix.isEmpty ? Settings.defaultReminderTitle : prefix
-        return (title: title, body: fill(Settings.reminderBody).trimmingCharacters(in: .whitespaces))
+        return (title: title, body: fill(Settings.defaultReminderBody))
     }
 
     func send(title: String, body: String, sound: String?) {

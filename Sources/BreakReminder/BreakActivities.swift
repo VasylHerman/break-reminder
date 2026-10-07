@@ -5,7 +5,7 @@ import Foundation
 /// Suggested break activities: one concrete thing to do, picked per reminder.
 enum BreakActivities {
     enum Category: String, CaseIterable, Identifiable {
-        case move, eyes, drink, air, breathe, people, enjoy, home, mac, custom
+        case move, eyes, drink, air, breathe, people, enjoy, home, mac
         var id: String { rawValue }
         var label: String {
             switch self {
@@ -18,7 +18,6 @@ enum BreakActivities {
             case .enjoy: return "Enjoy"
             case .home: return "Home"
             case .mac: return "Mac"
-            case .custom: return "My own"
             }
         }
     }
@@ -172,15 +171,12 @@ enum BreakActivities {
     }
 
     /// Picks an activity for now: enabled categories, time rules, and never one of the last two.
-    static func pick(enabled: Set<Category>, custom: [String], recent: [String], now: Date = Date()) -> Activity? {
+    static func pick(enabled: Set<Category>, recent: [String], now: Date = Date()) -> Activity? {
         let hour = Calendar.current.component(.hour, from: now)
         var pool = all.filter { enabled.contains($0.category) }
         pool = pool.filter { !($0.daylightOnly && (hour < 7 || hour >= 19)) }
         pool = pool.filter { $0.notAfterHour.map { hour < $0 } ?? true }
         pool = pool.filter { $0.requires?() ?? true }
-        if enabled.contains(.custom) {
-            pool += custom.map { Activity(category: .custom, title: $0, body: "") }
-        }
         let fresh = pool.filter { !recent.contains($0.title) }
         return (fresh.isEmpty ? pool : fresh).randomElement()
     }

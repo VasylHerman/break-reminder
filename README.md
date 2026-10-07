@@ -124,9 +124,9 @@ The bundle is ad-hoc signed, which is enough for local use. Nothing is uploaded 
 
 | Tab | Options |
 | --- | --- |
-| General | Launch at login. Daily update check and automatic install while resting. Work limit, rest threshold and warn-before minutes as steppers |
+| General | Launch at login, on by default for an installed copy. Daily update check and automatic install while resting. Work limit, rest threshold and warn-before minutes as steppers |
 | Appearance | Live preview, theme (Quiet, Signal, Accent), show as (minutes with unit, minutes, dot, heart), outline mode, weekly score heart beside it, and under Advanced the outline direction and blink |
-| Reminders | Firmness (Automatic, Gentle, Normal, Firm), repeat interval, suggested activities with category toggles and your own lines, or editable title and message with `{minutes}` and `{rest}` placeholders, sound picker that previews on change, Send Test Notification |
+| Reminders | Firmness (Automatic, Gentle, Normal, Firm), repeat interval, optional prefix for the title, suggested activities with category toggles and the reason why, sound picker that previews on change, Send Test Notification |
 | Smart Pause | Master switch, the three triggers with a live "Now" indicator when detected, and the grace period |
 | About | Version, install method, feedback and project links, copy the Homebrew install command, Reset All Settings |
 

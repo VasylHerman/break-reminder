@@ -237,11 +237,8 @@ struct ReminderSettingsView: View {
     @AppStorage(Settings.Key.sound) private var sound = Settings.defaultSound
     @AppStorage(Settings.Key.workLimit) private var workLimit = 25
     @AppStorage(Settings.Key.reminderTitle) private var title = ""
-    @AppStorage(Settings.Key.reminderBody) private var body_ = Settings.defaultReminderBody
-    @AppStorage(Settings.Key.reminderStyle) private var reminderStyle = "activities"
     @AppStorage(Settings.Key.activityWhy) private var activityWhy = true
     @State private var categories = Settings.activityCategories
-    @State private var customLines = Settings.customActivities.joined(separator: "\n")
     @State private var example: (title: String, body: String)?
     @AppStorage(Settings.Key.firmnessMode) private var firmnessMode = FirmnessMode.automatic.rawValue
     @AppStorage(Settings.Key.autoFirmness) private var autoFirmness = Firmness.normal.rawValue
@@ -276,72 +273,40 @@ struct ReminderSettingsView: View {
                 StepperRow(label: "Repeat while over the limit every", value: "\(remindEvery) min",
                            number: $remindEvery, range: 1...120)
                     .disabled(currentLevel == .gentle)
-                Picker("Text", selection: $reminderStyle) {
-                    Text("Suggest an activity").tag("activities")
-                    Text("My own text").tag("custom")
-                }
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(reminderStyle == "custom" ? "Title" : "Prefix, optional")
-                    TextField("", text: $title, prompt: Text(reminderStyle == "custom" ? Settings.defaultReminderTitle : "For example Break, Pause, or ♥"))
+                    Text("Prefix, optional")
+                    TextField("", text: $title, prompt: Text("For example Break, Pause, or ♥"))
                         .textFieldStyle(.roundedBorder)
                         .labelsHidden()
                 }
-                if reminderStyle == "custom" {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Message")
-                        TextField("", text: $body_, prompt: Text(Settings.defaultReminderBody), axis: .vertical)
-                            .textFieldStyle(.roundedBorder)
-                            .labelsHidden()
-                            .lineLimit(2...4)
-                        Text("{minutes} is the length of the work block, {rest} the rest threshold.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                } else {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Activities")
-                        LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), alignment: .leading, spacing: 4) {
-                            ForEach(BreakActivities.Category.allCases) { category in
-                                Toggle(category.label, isOn: Binding(
-                                    get: { categories.contains(category) },
-                                    set: { on in
-                                        if on { categories.insert(category) } else { categories.remove(category) }
-                                        Settings.activityCategories = categories
-                                    }
-                                ))
-                                .toggleStyle(.checkbox)
-                            }
-                        }
-                        Toggle("Add the reason why it helps", isOn: $activityWhy)
-                        Text("One activity per reminder, never the same as the last two. Outdoor ones only in daylight, coffee not after 16:00, "
-                             + "Dance only while music plays. Repeats keep the activity and shorten the text.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    if categories.contains(.custom) {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("My own, one per line")
-                            TextEditor(text: $customLines)
-                                .font(.body)
-                                .frame(height: 64)
-                                .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.primary.opacity(0.15)))
-                                .onChange(of: customLines) { text in
-                                    Settings.customActivities = text.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Activities")
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), alignment: .leading, spacing: 4) {
+                        ForEach(BreakActivities.Category.allCases) { category in
+                            Toggle(category.label, isOn: Binding(
+                                get: { categories.contains(category) },
+                                set: { on in
+                                    if on { categories.insert(category) } else { categories.remove(category) }
+                                    Settings.activityCategories = categories
                                 }
-                            Text("For example: time for your medication, water the plants, feed the cat.")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                            ))
+                            .toggleStyle(.checkbox)
                         }
                     }
-                    if let example {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(example.title).font(.callout.weight(.semibold))
-                            Text(example.body).font(.callout).foregroundStyle(.secondary)
-                        }
-                        .padding(8)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 6))
+                    Toggle("Add the reason why it helps", isOn: $activityWhy)
+                    Text("One activity per reminder, never the same as the last two. Outdoor ones only in daylight, coffee not after 16:00, "
+                         + "Dance only while music plays. Repeats keep the activity and shorten the text.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                if let example {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(example.title).font(.callout.weight(.semibold))
+                        Text(example.body).font(.callout).foregroundStyle(.secondary)
                     }
+                    .padding(8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 6))
                 }
                 Picker("Sound", selection: $sound) {
                     Text("Off").tag("")
@@ -354,7 +319,6 @@ struct ReminderSettingsView: View {
                 HStack {
                     Button("Restore Default Text") {
                         title = ""
-                        body_ = Settings.defaultReminderBody
                         categories = Set(BreakActivities.Category.allCases)
                         Settings.activityCategories = categories
                     }

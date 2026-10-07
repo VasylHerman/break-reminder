@@ -34,6 +34,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         Settings.registerDefaults()
         Self.takeOverOlderInstances()
+        LoginItem.enableOnFirstRun()
         history.repairDuplicates()
         tracker = ActivityTracker(restThreshold: Settings.restThreshold, pollInterval: Self.pollInterval)
         tracker.onBlockEnded = { [weak self] state, start, end in
