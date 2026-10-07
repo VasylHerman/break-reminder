@@ -39,7 +39,7 @@ enum Settings {
             Key.reminderTitle: defaultReminderTitle,
             Key.reminderBody: defaultReminderBody,
             Key.warnBlink: true,
-            Key.outlineStyle: OutlineStyle.unwindFromTop.rawValue,
+            Key.outlineStyle: OutlineStyle.leftClockwise.rawValue,
             Key.showUnit: false,
         ])
     }
@@ -89,7 +89,7 @@ enum Settings {
 
     /// How the outline around the counter shows the block's progress.
     static var outlineStyle: OutlineStyle {
-        get { OutlineStyle(rawValue: defaults.string(forKey: Key.outlineStyle) ?? "") ?? .unwindFromTop }
+        get { OutlineStyle(stored: defaults.string(forKey: Key.outlineStyle)) }
         set { defaults.set(newValue.rawValue, forKey: Key.outlineStyle) }
     }
 
@@ -125,37 +125,68 @@ enum Settings {
 /// Outline styles around the menu bar counter. All of them close fully in red past the limit.
 enum OutlineStyle: String, CaseIterable, Identifiable {
     case off
-    /// Time spent: grows clockwise from the top.
-    case fillClockwise
-    /// Time left: the gap opens at the top and grows clockwise.
-    case unwindFromTop
-    /// Time left: the far end retreats counterclockwise toward the top.
-    case retreatToTop
-    /// Time left: shrinks from both sides toward the bottom.
-    case shrinkToBottom
+    // Time spent: the outline grows.
+    case spentClockwise          // from the top, clockwise
+    case spentCounterclockwise   // from the top, counterclockwise
+    case spentFromBottom         // from the bottom, both sides toward the top
+    case spentFromTop            // from the top, both sides toward the bottom
+    // Time left: the outline shrinks.
+    case leftClockwise           // the gap opens at the top and grows clockwise
+    case leftCounterclockwise    // the gap opens at the top and grows counterclockwise
+    case leftToBottom            // shrinks from both sides toward the bottom
+    case leftToTop               // shrinks from both sides toward the top
 
     var id: String { rawValue }
+
+    /// Where the stroke path starts; the range below is measured clockwise from here.
+    enum Anchor { case top, bottom }
 
     var label: String {
         switch self {
         case .off: return "Off"
-        case .fillClockwise: return "Time spent, fills clockwise"
-        case .unwindFromTop: return "Time left, unwinds from the top"
-        case .retreatToTop: return "Time left, retreats to the top"
-        case .shrinkToBottom: return "Time left, shrinks to the bottom"
+        case .spentClockwise: return "Time spent, grows clockwise"
+        case .spentCounterclockwise: return "Time spent, grows counterclockwise"
+        case .spentFromBottom: return "Time spent, grows from the bottom"
+        case .spentFromTop: return "Time spent, grows from the top"
+        case .leftClockwise: return "Time left, unwinds clockwise"
+        case .leftCounterclockwise: return "Time left, unwinds counterclockwise"
+        case .leftToBottom: return "Time left, shrinks to the bottom"
+        case .leftToTop: return "Time left, shrinks to the top"
         }
     }
 
-    /// Visible stroke range (0 = top center, clockwise to 1) for a block `progress` of 0...1.
-    func strokeRange(progress: Double) -> (start: Double, end: Double)? {
+    var isTimeLeft: Bool {
+        switch self {
+        case .leftClockwise, .leftCounterclockwise, .leftToBottom, .leftToTop: return true
+        default: return false
+        }
+    }
+
+    /// Visible stroke range (0...1 clockwise from the anchor) for a block `progress` of 0...1.
+    func stroke(progress: Double) -> (anchor: Anchor, start: Double, end: Double)? {
         let spent = min(max(progress, 0), 1)
         let left = 1 - spent
         switch self {
         case .off: return nil
-        case .fillClockwise: return (0, spent)
-        case .unwindFromTop: return (spent, 1)
-        case .retreatToTop: return (0, left)
-        case .shrinkToBottom: return (0.5 - left / 2, 0.5 + left / 2)
+        case .spentClockwise: return (.top, 0, spent)
+        case .spentCounterclockwise: return (.top, 1 - spent, 1)
+        case .spentFromBottom: return (.top, 0.5 - spent / 2, 0.5 + spent / 2)
+        case .spentFromTop: return (.bottom, 0.5 - spent / 2, 0.5 + spent / 2)
+        case .leftClockwise: return (.top, spent, 1)
+        case .leftCounterclockwise: return (.top, 0, left)
+        case .leftToBottom: return (.top, 0.5 - left / 2, 0.5 + left / 2)
+        case .leftToTop: return (.bottom, 0.5 - left / 2, 0.5 + left / 2)
+        }
+    }
+
+    /// Migrates names from 0.9.0.
+    init(stored: String?) {
+        switch stored {
+        case "fillClockwise": self = .spentClockwise
+        case "unwindFromTop": self = .leftClockwise
+        case "retreatToTop": self = .leftCounterclockwise
+        case "shrinkToBottom": self = .leftToBottom
+        default: self = OutlineStyle(rawValue: stored ?? "") ?? .leftClockwise
         }
     }
 }

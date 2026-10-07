@@ -33,7 +33,7 @@ struct MenuBarPreview: View {
                     .padding(.horizontal, 4)
                     .padding(.vertical, 1)
                     .overlay {
-                        Outline(range: outlineRange(progress: progress, over: over))
+                        Outline(stroke: outlineStroke(progress: progress, over: over))
                             .stroke(outlineColor, style: StrokeStyle(lineWidth: 1.5, lineCap: .round))
                     }
                     .opacity(opacity)
@@ -53,10 +53,10 @@ struct MenuBarPreview: View {
         }
     }
 
-    private func outlineRange(progress: Double, over: Bool) -> (start: Double, end: Double)? {
+    private func outlineStroke(progress: Double, over: Bool) -> (anchor: OutlineStyle.Anchor, start: Double, end: Double)? {
         if style == .off { return nil }
-        if over { return (0, 1) }
-        return style.strokeRange(progress: progress)
+        if over { return (.top, 0, 1) }
+        return style.stroke(progress: progress)
     }
 
     /// Fade to 25% and back over 0.4 s, once per second in the warning and twice per second over the limit.
@@ -70,21 +70,30 @@ struct MenuBarPreview: View {
     }
 }
 
-/// Rounded outline starting at the top center and running clockwise, trimmed to `range`.
+/// Rounded outline starting at the top or bottom center and running clockwise, trimmed to the stroke range.
 private struct Outline: Shape {
-    let range: (start: Double, end: Double)?
+    let stroke: (anchor: OutlineStyle.Anchor, start: Double, end: Double)?
 
     func path(in rect: CGRect) -> Path {
-        guard let range else { return Path() }
+        guard let stroke else { return Path() }
         let r = rect.insetBy(dx: 0.75, dy: 0.75)
         let radius = min(6, r.height / 2)
         var p = Path()
-        p.move(to: CGPoint(x: r.midX, y: r.minY))
-        p.addArc(tangent1End: CGPoint(x: r.maxX, y: r.minY), tangent2End: CGPoint(x: r.maxX, y: r.maxY), radius: radius)
-        p.addArc(tangent1End: CGPoint(x: r.maxX, y: r.maxY), tangent2End: CGPoint(x: r.minX, y: r.maxY), radius: radius)
-        p.addArc(tangent1End: CGPoint(x: r.minX, y: r.maxY), tangent2End: CGPoint(x: r.minX, y: r.minY), radius: radius)
-        p.addArc(tangent1End: CGPoint(x: r.minX, y: r.minY), tangent2End: CGPoint(x: r.midX, y: r.minY), radius: radius)
-        p.addLine(to: CGPoint(x: r.midX, y: r.minY))
-        return p.trimmedPath(from: range.start, to: range.end)
+        if stroke.anchor == .top {
+            p.move(to: CGPoint(x: r.midX, y: r.minY))
+            p.addArc(tangent1End: CGPoint(x: r.maxX, y: r.minY), tangent2End: CGPoint(x: r.maxX, y: r.maxY), radius: radius)
+            p.addArc(tangent1End: CGPoint(x: r.maxX, y: r.maxY), tangent2End: CGPoint(x: r.minX, y: r.maxY), radius: radius)
+            p.addArc(tangent1End: CGPoint(x: r.minX, y: r.maxY), tangent2End: CGPoint(x: r.minX, y: r.minY), radius: radius)
+            p.addArc(tangent1End: CGPoint(x: r.minX, y: r.minY), tangent2End: CGPoint(x: r.midX, y: r.minY), radius: radius)
+            p.addLine(to: CGPoint(x: r.midX, y: r.minY))
+        } else {
+            p.move(to: CGPoint(x: r.midX, y: r.maxY))
+            p.addArc(tangent1End: CGPoint(x: r.minX, y: r.maxY), tangent2End: CGPoint(x: r.minX, y: r.minY), radius: radius)
+            p.addArc(tangent1End: CGPoint(x: r.minX, y: r.minY), tangent2End: CGPoint(x: r.maxX, y: r.minY), radius: radius)
+            p.addArc(tangent1End: CGPoint(x: r.maxX, y: r.minY), tangent2End: CGPoint(x: r.maxX, y: r.maxY), radius: radius)
+            p.addArc(tangent1End: CGPoint(x: r.maxX, y: r.maxY), tangent2End: CGPoint(x: r.midX, y: r.maxY), radius: radius)
+            p.addLine(to: CGPoint(x: r.midX, y: r.maxY))
+        }
+        return p.trimmedPath(from: stroke.start, to: stroke.end)
     }
 }

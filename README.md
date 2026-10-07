@@ -10,8 +10,9 @@ and reminds you through Notification Center to take a break.
   orange in the last 5 minutes before the limit (configurable), red once you are over it,
   green while resting.
 - A thin outline around the counter shows the block's progress. By default it is full at the
-  start and unwinds from the top as time runs out; Settings offers two other shrinking styles,
-  a fill-up style, or Off. Past the limit the outline closes in red.
+  start and unwinds clockwise as time runs out. Settings offers eight styles, time spent or
+  time left, each clockwise, counterclockwise, from or to the bottom, from or to the top, or Off.
+  Past the limit the outline closes in red.
 - During the warning the counter blinks, and the pace follows the minutes left: every 5 seconds
   at 5 minutes, every second at 1 minute and past the limit. Can be turned off in Settings.
 

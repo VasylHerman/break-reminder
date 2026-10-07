@@ -28,7 +28,7 @@ struct GeneralSettingsView: View {
     @AppStorage(Settings.Key.restThreshold) private var restThreshold = 5
     @AppStorage(Settings.Key.warnBefore) private var warnBefore = 5
     @AppStorage(Settings.Key.warnBlink) private var warnBlink = true
-    @AppStorage(Settings.Key.outlineStyle) private var outlineStyle = OutlineStyle.unwindFromTop.rawValue
+    @AppStorage(Settings.Key.outlineStyle) private var outlineStyle = OutlineStyle.leftClockwise.rawValue
     @AppStorage(Settings.Key.showUnit) private var showUnit = false
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
     @State private var launchAtLoginError: String?
@@ -54,14 +54,20 @@ struct GeneralSettingsView: View {
             }
             Section("Menu bar") {
                 MenuBarPreview(
-                    style: OutlineStyle(rawValue: outlineStyle) ?? .unwindFromTop,
+                    style: OutlineStyle(stored: outlineStyle),
                     showUnit: showUnit,
                     blink: warnBlink,
                     workLimit: workLimit,
                     warnBefore: warnBefore
                 )
                 Picker("Outline", selection: $outlineStyle) {
-                    ForEach(OutlineStyle.allCases) { style in
+                    Text(OutlineStyle.off.label).tag(OutlineStyle.off.rawValue)
+                    Divider()
+                    ForEach(OutlineStyle.allCases.filter { $0 != .off && !$0.isTimeLeft }) { style in
+                        Text(style.label).tag(style.rawValue)
+                    }
+                    Divider()
+                    ForEach(OutlineStyle.allCases.filter { $0.isTimeLeft }) { style in
                         Text(style.label).tag(style.rawValue)
                     }
                 }
