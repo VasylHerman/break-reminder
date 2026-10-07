@@ -70,7 +70,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             color = .systemRed
             description = "Over work limit"
         case .working where Settings.warnBefore > 0 && snapshot.currentSeconds >= Settings.workLimit - Settings.warnBefore:
-            color = .systemYellow
+            color = .systemOrange
             description = "Break coming up"
         case .working:
             color = .labelColor

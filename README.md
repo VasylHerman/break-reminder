@@ -7,7 +7,7 @@ and reminds you through Notification Center to take a break.
 - Rest starts after the input has been idle for 5 minutes (configurable). The work counter resets.
 - After 45 minutes of continuous work (configurable) a notification fires with a sound (Glass by default), then repeats every 10 minutes until you rest.
 - The menu bar shows a plain minute counter, colored by state: default while working,
-  yellow in the last 5 minutes before the limit (configurable), red once you are over it,
+  orange in the last 5 minutes before the limit (configurable), red once you are over it,
   green while resting.
 
 No Accessibility or Input Monitoring permission is needed. The app only reads the system idle
@@ -51,7 +51,7 @@ The bundle is ad-hoc signed, which is enough for local use. Nothing is uploaded 
 | Reset Work Timer | Start the current work block from zero |
 | Work Limit | 25, 30, 45, 60 or 90 minutes |
 | Rest Counts After Idle | 2, 3, 5 or 10 minutes of no input |
-| Warn Before Limit | Turn the counter yellow 2, 3, 5 or 10 minutes before the limit, or Off |
+| Warn Before Limit | Turn the counter orange 2, 3, 5 or 10 minutes before the limit, or Off |
 | Sound | Any built-in macOS alert sound, or Off. Picking one plays a preview |
 | Launch at Login | Registers the app as a login item |
 | Break Reminder vX.Y.Z | Installed version |
