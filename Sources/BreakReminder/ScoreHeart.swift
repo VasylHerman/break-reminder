@@ -4,10 +4,12 @@ import AppKit
 enum ScoreHeart {
     static let pointSize: CGFloat = 11
     static let gap: CGFloat = 5
+    /// The fill is lighter than the outline so the level stays readable at any score.
+    static let fillOpacity: CGFloat = 0.45
 
     /// `fill` 0...1. Tinted with `color`; dynamic colors resolve at draw time, so call again on appearance changes.
-    static func image(fill: Double, color: NSColor) -> NSImage? {
-        let config = NSImage.SymbolConfiguration(pointSize: pointSize, weight: .medium)
+    static func image(fill: Double, color: NSColor, pointSize: CGFloat = pointSize) -> NSImage? {
+        let config = NSImage.SymbolConfiguration(pointSize: pointSize, weight: .semibold)
         guard let outline = NSImage(systemSymbolName: "heart", accessibilityDescription: nil)?.withSymbolConfiguration(config),
               let filled = NSImage(systemSymbolName: "heart.fill", accessibilityDescription: nil)?.withSymbolConfiguration(config)
         else { return nil }
@@ -17,7 +19,7 @@ enum ScoreHeart {
             let fillHeight = rect.height * CGFloat(min(max(fill, 0), 1))
             NSGraphicsContext.saveGraphicsState()
             NSRect(x: rect.minX, y: rect.minY, width: rect.width, height: fillHeight).clip()
-            filled.draw(in: rect)
+            filled.draw(in: rect, from: .zero, operation: .sourceOver, fraction: fillOpacity)
             NSGraphicsContext.restoreGraphicsState()
             outline.draw(in: rect)
             color.set()
@@ -30,7 +32,7 @@ enum ScoreHeart {
 
     /// The heart centered on a square canvas, for the ring to wrap when the heart is the whole item.
     static func canvas(fill: Double, color: NSColor, canvas: CGFloat) -> NSImage? {
-        guard let heart = image(fill: fill, color: color) else { return nil }
+        guard let heart = image(fill: fill, color: color, pointSize: 11.5) else { return nil }
         let result = NSImage(size: NSSize(width: canvas, height: canvas), flipped: false) { _ in
             heart.draw(in: NSRect(x: (canvas - heart.size.width) / 2, y: (canvas - heart.size.height) / 2,
                                   width: heart.size.width, height: heart.size.height))

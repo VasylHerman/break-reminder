@@ -38,7 +38,8 @@ final class ProgressBorder {
             return
         }
         shape.isHidden = false
-        shape.lineWidth = NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast ? 2.5 : 1.5
+        let glyph = (button?.attributedTitle.length ?? 0) == 0
+        shape.lineWidth = NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast ? 2.5 : (glyph ? 1.75 : 1.5)
         shape.strokeColor = color.cgColor
         shape.strokeStart = CGFloat(stroke.start)
         shape.strokeEnd = CGFloat(stroke.end)

@@ -196,7 +196,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         let theme = Settings.theme
         let color = theme.textColor(for: phase)
-        let borderColor = theme.outlineColor(for: phase, highContrast: NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast)
+        let borderColor = theme.outlineColor(
+            for: phase,
+            highContrast: NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast,
+            glyph: Settings.counterStyle.isGlyph
+        )
 
         var tooltip = "\(description): \(TimeFormat.minutes(snapshot.currentSeconds))"
 
@@ -214,15 +218,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         if counterStyle == .heart {
             // The heart is the item: fill is the score, color is the state, the outline rings it.
+            // Full label color while working, like every other menu bar glyph.
             button.attributedTitle = NSAttributedString(string: "")
-            let glyphColor: NSColor = phase == .working ? .secondaryLabelColor : borderColor
+            let glyphColor: NSColor = phase == .working ? .labelColor : borderColor
             progressBorder?.ringDiameter = 20
             button.image = ScoreHeart.canvas(fill: week.adherence ?? 0, color: glyphColor, canvas: 22)
         } else if counterStyle == .hidden {
             // Dot in the state color, with the outline drawn as a ring around it.
             button.attributedTitle = NSAttributedString(string: "")
-            progressBorder?.ringDiameter = 14
-            let dot = Self.dotImage(color: phase == .working ? .secondaryLabelColor : borderColor)
+            progressBorder?.ringDiameter = 16
+            let dot = Self.dotImage(color: phase == .working ? .labelColor : borderColor)
             button.image = heart.map { ScoreHeart.compose(heart: $0, with: dot) } ?? dot
         } else {
             button.image = heart
@@ -237,13 +242,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         progressBorder?.update(progress: progress, style: Settings.outlineStyle, color: borderColor)
     }
 
-    /// A 6 pt filled circle on a canvas the size of the ring, so the status item is wide enough for both.
+    /// A 7 pt filled circle on a canvas the size of the ring, so the status item is wide enough for both.
     /// Dynamic colors resolve when the image is drawn, so it follows the menu bar appearance.
     private static func dotImage(color: NSColor) -> NSImage {
-        let canvas: CGFloat = 16
+        let canvas: CGFloat = 18
         let image = NSImage(size: NSSize(width: canvas, height: canvas), flipped: false) { rect in
             color.setFill()
-            NSBezierPath(ovalIn: rect.insetBy(dx: (canvas - 6) / 2, dy: (canvas - 6) / 2)).fill()
+            NSBezierPath(ovalIn: rect.insetBy(dx: (canvas - 7) / 2, dy: (canvas - 7) / 2)).fill()
             return true
         }
         image.isTemplate = false

@@ -28,7 +28,8 @@ struct MenuBarPreview: View {
             let phase: CounterPhase = over ? .over : (warning ? .warning : .working)
             let highContrast = NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast
             let textColor = Color(nsColor: theme.textColor(for: phase))
-            let outlineColor = Color(nsColor: theme.outlineColor(for: phase, highContrast: highContrast))
+            let outlineColor = Color(nsColor: theme.outlineColor(for: phase, highContrast: highContrast, glyph: counterStyle.isGlyph))
+            let glyphWidth: CGFloat = highContrast ? 2.5 : 1.75
             let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
             let opacity = blinkOpacity(t: t, active: blink && !reduceMotion && (warning || over), fast: over)
 
@@ -40,22 +41,22 @@ struct MenuBarPreview: View {
                         .opacity(opacity)
                 }
                 if counterStyle == .heart {
-                    ScoreHeartView(fill: score ?? 0)
-                        .foregroundStyle(phase == .working ? Color.secondary : outlineColor)
+                    ScoreHeartView(fill: score ?? 0, size: 11.5)
+                        .foregroundStyle(phase == .working ? Color.primary : outlineColor)
                         .frame(width: 20, height: 20)
                         .overlay {
                             Outline(stroke: outlineStroke(progress: progress, over: over), circular: true)
-                                .stroke(outlineColor, style: StrokeStyle(lineWidth: highContrast ? 2.5 : 1.5, lineCap: .round))
+                                .stroke(outlineColor, style: StrokeStyle(lineWidth: glyphWidth, lineCap: .round))
                         }
                         .opacity(opacity)
                 } else if counterStyle == .hidden {
                     Circle()
-                        .fill(phase == .working ? Color.secondary : outlineColor)
-                        .frame(width: 6, height: 6)
-                        .frame(width: 14, height: 14)
+                        .fill(phase == .working ? Color.primary : outlineColor)
+                        .frame(width: 7, height: 7)
+                        .frame(width: 16, height: 16)
                         .overlay {
                             Outline(stroke: outlineStroke(progress: progress, over: over), circular: true)
-                                .stroke(outlineColor, style: StrokeStyle(lineWidth: highContrast ? 2.5 : 1.5, lineCap: .round))
+                                .stroke(outlineColor, style: StrokeStyle(lineWidth: glyphWidth, lineCap: .round))
                         }
                         .opacity(opacity)
                 } else {
@@ -135,10 +136,12 @@ private struct Outline: Shape {
 /// SwiftUI twin of `ScoreHeart.image`: outline heart with a fill rising to `fill`.
 struct ScoreHeartView: View {
     let fill: Double
+    var size: CGFloat = 11
 
     var body: some View {
         ZStack {
             Image(systemName: "heart.fill")
+                .opacity(0.45)
                 .mask(alignment: .bottom) {
                     GeometryReader { geo in
                         Rectangle()
@@ -148,6 +151,6 @@ struct ScoreHeartView: View {
                 }
             Image(systemName: "heart")
         }
-        .font(.system(size: 11, weight: .medium))
+        .font(.system(size: size, weight: .semibold))
     }
 }

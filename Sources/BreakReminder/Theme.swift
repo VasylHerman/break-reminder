@@ -47,8 +47,9 @@ enum Theme: String, CaseIterable, Identifiable {
         }
     }
 
-    func outlineColor(for phase: CounterPhase, highContrast: Bool) -> NSColor {
-        let idle: NSColor = highContrast ? .secondaryLabelColor : .tertiaryLabelColor
+    /// `glyph` is true for the dot and heart modes, where the ring is the item's only frame and needs more presence.
+    func outlineColor(for phase: CounterPhase, highContrast: Bool, glyph: Bool = false) -> NSColor {
+        let idle: NSColor = highContrast || glyph ? .secondaryLabelColor : .tertiaryLabelColor
         switch (self, phase) {
         case (_, .over): return .systemRed
         case (.quiet, .working): return idle
