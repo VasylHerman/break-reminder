@@ -33,16 +33,36 @@ final class History {
         }
     }
 
+    /// One finished work or rest block. Kept for two days, for the day timeline only.
+    struct Block: Codable {
+        var kind: ActivityState
+        var start: Date
+        var end: Date
+    }
+
     private struct Store: Codable {
         var version = 1
         var days: [String: Day] = [:]
         var events: [Event] = []
+        var blocks: [Block] = []
+
+        init() {}
+
+        // Older files have no "blocks"; decode what is there.
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            version = try c.decodeIfPresent(Int.self, forKey: .version) ?? 1
+            days = try c.decodeIfPresent([String: Day].self, forKey: .days) ?? [:]
+            events = try c.decodeIfPresent([Event].self, forKey: .events) ?? []
+            blocks = try c.decodeIfPresent([Block].self, forKey: .blocks) ?? []
+        }
     }
 
     static let followedWithin: TimeInterval = 5 * 60
     static let lateWithin: TimeInterval = 15 * 60
     static let eventRetention: TimeInterval = 14 * 86_400
     static let dayRetention: TimeInterval = 62 * 86_400
+    static let blockRetention: TimeInterval = 2 * 86_400
 
     private var store = Store()
     private let fileURL: URL
@@ -71,6 +91,7 @@ final class History {
         day.work += length
         day.longestWork = max(day.longestWork, length)
         setDay(day, for: start)
+        store.blocks.append(Block(kind: .working, start: start, end: end))
     }
 
     func recordRest(start: Date, end: Date) {
@@ -79,6 +100,7 @@ final class History {
         var day = self.day(for: start)
         day.rest += length
         setDay(day, for: start)
+        store.blocks.append(Block(kind: .resting, start: start, end: end))
     }
 
     /// The work limit was reached. One event per work block.
@@ -145,6 +167,16 @@ final class History {
         store.events.filter { $0.dueAt >= since }
     }
 
+    /// Events due within a date interval.
+    func events(in interval: DateInterval) -> [Event] {
+        store.events.filter { interval.contains($0.dueAt) }
+    }
+
+    /// Finished blocks overlapping a date interval, oldest first.
+    func blocks(in interval: DateInterval) -> [Block] {
+        store.blocks.filter { $0.end > interval.start && $0.start < interval.end }
+    }
+
     /// Consecutive days ending today or yesterday with adherence of 75% or better and at least one counted break.
     func streak(asOf now: Date = Date()) -> Int {
         let calendar = Calendar.current
@@ -170,6 +202,7 @@ final class History {
 
     private func prune(now: Date = Date()) {
         store.events.removeAll { now.timeIntervalSince($0.dueAt) > Self.eventRetention }
+        store.blocks.removeAll { now.timeIntervalSince($0.end) > Self.blockRetention }
         let cutoff = dayKey.string(from: now.addingTimeInterval(-Self.dayRetention))
         store.days = store.days.filter { $0.key >= cutoff }
     }

@@ -29,15 +29,86 @@ enum Stats {
         var adherence: Double? { counted > 0 ? adherencePoints / Double(counted) : nil }
     }
 
-    static func interval(for period: Period, now: Date = Date()) -> DateInterval {
+    static func interval(for period: Period, now: Date = Date(), offset: Int = 0) -> DateInterval {
         let calendar = Calendar.current
+        let component: Calendar.Component
+        switch period {
+        case .day: component = .day
+        case .week: component = .weekOfYear
+        case .month: component = .month
+        }
+        let shifted = calendar.date(byAdding: component, value: offset, to: now)!
+        return calendar.dateInterval(of: component, for: shifted)!
+    }
+
+    /// Previous period, for comparison.
+    static func previousSummary(period: Period, history: History, now: Date = Date()) -> Summary {
+        var summary = Summary()
+        for (_, day) in history.days(in: interval(for: period, now: now, offset: -1)) {
+            summary.work += day.work
+            summary.rest += day.rest
+            summary.longestWork = max(summary.longestWork, day.longestWork)
+            summary.due += day.due
+            summary.taken += day.taken
+            summary.counted += day.counted
+            summary.adherencePoints += Double(day.followed) + 0.5 * Double(day.late)
+        }
+        return summary
+    }
+
+    /// One row per day of the period, for the week bars and the month grid.
+    struct DayRow: Identifiable {
+        let date: Date
+        let day: History.Day
+        let isToday: Bool
+        var id: Date { date }
+        var work: TimeInterval { day.work }
+    }
+
+    static func dayRows(period: Period, history: History, live: ActivityTracker.Snapshot?, blockStart: Date?, now: Date = Date()) -> [DayRow] {
+        let calendar = Calendar.current
+        return history.days(in: interval(for: period, now: now)).map { date, day in
+            var day = day
+            let isToday = calendar.isDate(date, inSameDayAs: now)
+            if isToday, let live, let blockStart, calendar.isDate(blockStart, inSameDayAs: now) {
+                switch live.state {
+                case .working:
+                    day.work += live.currentSeconds
+                    day.longestWork = max(day.longestWork, live.currentSeconds)
+                case .resting:
+                    day.rest += live.currentSeconds
+                }
+            }
+            return DayRow(date: date, day: day, isToday: isToday)
+        }
+    }
+
+    /// The one sentence at the top of the Stats pane.
+    static func headline(period: Period, summary: Summary, previous: Summary, longestStart: Date?) -> String {
+        let timeFormatter = DateFormatter()
+        timeFormatter.timeStyle = .short
         switch period {
         case .day:
-            return calendar.dateInterval(of: .day, for: now)!
-        case .week:
-            return calendar.dateInterval(of: .weekOfYear, for: now)!
-        case .month:
-            return calendar.dateInterval(of: .month, for: now)!
+            guard summary.work > 0 || summary.due > 0 else { return "Nothing recorded yet today." }
+            var text = "Focused \(TimeFormat.minutes(summary.work))"
+            if summary.due > 0 { text += ", \(summary.taken) of \(summary.due) breaks taken" }
+            if summary.longestWork > 0 {
+                text += ", longest stretch \(TimeFormat.minutes(summary.longestWork))"
+                if let longestStart { text += " at \(timeFormatter.string(from: longestStart))" }
+            }
+            return text + "."
+        case .week, .month:
+            let name = period == .week ? "week" : "month"
+            guard let adherence = summary.adherence else {
+                return summary.work > 0 ? "Focused \(TimeFormat.minutes(summary.work)) so far, no breaks due yet this \(name)." : "Nothing recorded yet this \(name)."
+            }
+            let percent = Int((adherence * 100).rounded())
+            var text = "On time \(percent)% this \(name)"
+            if let before = previous.adherence {
+                let delta = Int(((adherence - before) * 100).rounded())
+                text += delta > 2 ? ", better than last \(name)" : (delta < -2 ? ", below last \(name)" : ", same as last \(name)")
+            }
+            return text + "."
         }
     }
 

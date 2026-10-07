@@ -25,8 +25,10 @@ and reminds you through Notification Center to take a break.
   to apps with Full Disk Access. After a pause ends, an overdue
   reminder waits a 2 minute grace period.
 
-- Stats, the first tab of the Settings window (⌘S from the menu): focused and rest time, longest block, breaks taken of due, on-time share,
-  good days and streak, for today, the calendar week and the calendar month. An optional heart
+- Stats, the first tab of the window (⌘S from the menu): a one-line headline, then today as a
+  timeline of focus and rest with skipped breaks marked, the week as bars of focused time, or
+  the month as a calendar grid tinted by on-time share. Below, the figures with deltas against
+  the previous period: focused, resting, longest block, breaks taken, on time, streak. An optional heart
   next to the counter fills with the week's on-time share. A break is on time when
   a rest starts within 5 minutes of the limit, half when within 15. Breaks held by Smart Pause are
   not counted against you. History lives in `~/Library/Application Support/BreakReminder/history.json`:
