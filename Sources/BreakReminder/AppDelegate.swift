@@ -31,6 +31,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         Settings.registerDefaults()
+        history.repairDuplicates()
         tracker = ActivityTracker(restThreshold: Settings.restThreshold, pollInterval: Self.pollInterval)
         tracker.onBlockEnded = { [weak self] state, start, end in
             guard let self else { return }

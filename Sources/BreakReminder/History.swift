@@ -103,8 +103,12 @@ final class History {
         store.blocks.append(Block(kind: .resting, start: start, end: end))
     }
 
-    /// The work limit was reached. One event per work block.
+    /// Two dues closer than this are the same block seen twice (a relaunch); the later one is dropped.
+    static let minimumDueGap: TimeInterval = 20 * 60
+
+    /// The work limit was reached. One event per work block, even across relaunches.
     func breakDue(at date: Date, held: Bool) {
+        if let last = store.events.last, date.timeIntervalSince(last.dueAt) < Self.minimumDueGap { return }
         store.events.append(Event(dueAt: date, held: held, outcome: .pending, restAt: nil))
         var day = self.day(for: date)
         day.due += 1
@@ -112,12 +116,43 @@ final class History {
         scheduleSave()
     }
 
-    /// A rest started; resolves the pending event if there is one.
+    /// A rest started; resolves every pending event by its own delay.
     func restStarted(at date: Date) {
-        guard let index = store.events.lastIndex(where: { $0.outcome == .pending }) else { return }
-        let delay = date.timeIntervalSince(store.events[index].dueAt)
-        let outcome: Outcome = delay <= Self.followedWithin ? .followed : (delay <= Self.lateWithin ? .late : .skipped)
-        resolve(index: index, outcome: outcome, restAt: date)
+        for index in store.events.indices where store.events[index].outcome == .pending {
+            let delay = date.timeIntervalSince(store.events[index].dueAt)
+            let outcome: Outcome = delay <= Self.followedWithin ? .followed : (delay <= Self.lateWithin ? .late : .skipped)
+            resolve(index: index, outcome: outcome, restAt: date)
+        }
+    }
+
+    /// Merges duplicate dues left by earlier versions and recomputes the day counters from the events.
+    func repairDuplicates() {
+        var kept: [Event] = []
+        for event in store.events.sorted(by: { $0.dueAt < $1.dueAt }) {
+            if let last = kept.last, event.dueAt.timeIntervalSince(last.dueAt) < Self.minimumDueGap {
+                // Same block: keep the better outcome.
+                let rank: [Outcome: Int] = [.followed: 3, .late: 2, .pending: 1, .skipped: 0]
+                if (rank[event.outcome] ?? 0) > (rank[last.outcome] ?? 0) { kept[kept.count - 1] = event }
+                continue
+            }
+            kept.append(event)
+        }
+        guard kept.count != store.events.count else { return }
+        store.events = kept
+        // Recount the days the events cover.
+        var touched = Set<String>()
+        for event in kept { touched.insert(dayKey.string(from: event.dueAt)) }
+        for key in touched {
+            guard var day = store.days[key] else { continue }
+            let events = kept.filter { dayKey.string(from: $0.dueAt) == key }
+            day.due = events.count
+            day.followed = events.filter { $0.outcome == .followed }.count
+            day.late = events.filter { $0.outcome == .late }.count
+            day.skipped = events.filter { $0.outcome == .skipped }.count
+            day.heldSkipped = events.filter { $0.outcome == .skipped && $0.held }.count
+            store.days[key] = day
+        }
+        save()
     }
 
     /// Called every tick: a pending event older than the late window is a skip. `reset` forces it.
