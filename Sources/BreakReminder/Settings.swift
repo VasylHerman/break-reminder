@@ -14,7 +14,12 @@ enum Settings {
         static let reminderTitle = "reminderTitle"
         static let reminderBody = "reminderBody"
         static let warnBlink = "warnBlink"
+        static let beatNormal = "beatNormalBPM"
+        static let beatWarning = "beatWarningBPM"
+        static let beatOver = "beatOverBPM"
+        static let beatWhileWorking = "beatWhileWorking"
         static let outlineStyle = "outlineStyle"
+        static let outlineSpan = "outlineSpanPercent"
         static let showUnit = "showUnit"          // 0.9 to 0.10, migrated into counterStyle
         static let counterStyle = "counterStyle"
         static let showScore = "showScore"
@@ -52,7 +57,12 @@ enum Settings {
             Key.reminderTitle: defaultReminderTitle,
             Key.reminderBody: defaultReminderBody,
             Key.warnBlink: true,
+            Key.beatNormal: 10,
+            Key.beatWarning: 40,
+            Key.beatOver: 80,
+            Key.beatWhileWorking: false,
             Key.outlineStyle: OutlineStyle.spentClockwise.rawValue,
+            Key.outlineSpan: 50,
             Key.counterStyle: CounterStyle.heart.rawValue,
             Key.showScore: false,
             Key.theme: Theme.quiet.rawValue,
@@ -70,7 +80,8 @@ enum Settings {
     static func resetAll() {
         for key in [Key.workLimit, Key.restThreshold, Key.remindEvery, Key.sound, Key.warnBefore,
                     Key.pausedUntil, Key.reminderTitle, Key.reminderBody, Key.warnBlink,
-                    Key.outlineStyle, Key.showUnit, Key.counterStyle, Key.showScore, Key.theme, Key.smartPauseEnabled, Key.smartPauseCall,
+                    Key.beatNormal, Key.beatWarning, Key.beatOver, Key.beatWhileWorking,
+                    Key.outlineStyle, Key.outlineSpan, Key.showUnit, Key.counterStyle, Key.showScore, Key.theme, Key.smartPauseEnabled, Key.smartPauseCall,
                     Key.smartPauseScreenShare, Key.smartPauseFullscreen, Key.smartPauseGrace,
                     Key.firmnessMode, Key.autoFirmness, Key.autoFirmnessDay, Key.autoSteppedDown,
                     Key.steppedDownCardDay] {
@@ -177,6 +188,14 @@ enum Settings {
         set { defaults.set(newValue.rawValue, forKey: Key.theme) }
     }
 
+    /// Share of the outline that represents a whole block, in percent. 50 means a finished block
+    /// fills half the ring. Adjustable with `defaults write dev.vasyl.BreakReminder outlineSpanPercent -int 75`.
+    static var outlineSpanPercent: Int {
+        get { min(100, max(10, defaults.integer(forKey: Key.outlineSpan))) }
+        set { defaults.set(newValue, forKey: Key.outlineSpan) }
+    }
+    static var outlineSpan: Double { Double(outlineSpanPercent) / 100 }
+
     /// How the outline around the counter shows the block's progress.
     static var outlineStyle: OutlineStyle {
         get { OutlineStyle(stored: defaults.string(forKey: Key.outlineStyle)) }
@@ -202,6 +221,26 @@ enum Settings {
         set { defaults.set(newValue.rawValue, forKey: Key.counterStyle) }
     }
 
+    // Heartbeat rates, beats per minute. Adjustable with
+    // `defaults write dev.vasyl.BreakReminder beatWarningBPM -int 120` and friends.
+    static var beatNormalBPM: Int {
+        get { min(200, max(5, defaults.integer(forKey: Key.beatNormal))) }
+        set { defaults.set(newValue, forKey: Key.beatNormal) }
+    }
+    static var beatWarningBPM: Int {
+        get { min(200, max(5, defaults.integer(forKey: Key.beatWarning))) }
+        set { defaults.set(newValue, forKey: Key.beatWarning) }
+    }
+    static var beatOverBPM: Int {
+        get { min(200, max(5, defaults.integer(forKey: Key.beatOver))) }
+        set { defaults.set(newValue, forKey: Key.beatOver) }
+    }
+    /// Beat at the normal rate while working, not only in the warning.
+    static var beatWhileWorking: Bool {
+        get { defaults.bool(forKey: Key.beatWhileWorking) }
+        set { defaults.set(newValue, forKey: Key.beatWhileWorking) }
+    }
+
     /// Blink the menu bar counter during the warning window and past the limit.
     static var warnBlink: Bool {
         get { defaults.bool(forKey: Key.warnBlink) }
@@ -216,7 +255,7 @@ enum Settings {
 
     /// Cheap fingerprint of every user setting, used to detect real changes.
     static var signature: String {
-        "\(workLimitMinutes)|\(restThresholdMinutes)|\(warnBeforeMinutes)|\(remindEveryMinutes)|\(notificationSound)|\(outlineStyle.rawValue)|\(counterStyle.rawValue)|\(showScore)|\(theme.rawValue)|\(firmnessMode.rawValue)"
+        "\(workLimitMinutes)|\(restThresholdMinutes)|\(warnBeforeMinutes)|\(remindEveryMinutes)|\(notificationSound)|\(beatNormalBPM)|\(beatWarningBPM)|\(beatOverBPM)|\(beatWhileWorking)|\(outlineStyle.rawValue)|\(outlineSpanPercent)|\(counterStyle.rawValue)|\(showScore)|\(theme.rawValue)|\(firmnessMode.rawValue)"
     }
 
     static var workLimit: TimeInterval { TimeInterval(workLimitMinutes * 60) }
@@ -266,16 +305,17 @@ enum OutlineStyle: String, CaseIterable, Identifiable {
     }
 
     /// Visible stroke range (0...1 clockwise from the anchor) for a block `progress` of 0...1.
-    func stroke(progress: Double) -> (anchor: Anchor, start: Double, end: Double)? {
-        let spent = min(max(progress, 0), 1)
-        let left = 1 - spent
+    /// `span` is the share of the outline a whole block covers, 1 for the full ring.
+    func stroke(progress: Double, span: Double = Settings.outlineSpan) -> (anchor: Anchor, start: Double, end: Double)? {
+        let spent = min(max(progress, 0), 1) * span
+        let left = span - spent
         switch self {
         case .off: return nil
         case .spentClockwise: return (.top, 0, spent)
         case .spentCounterclockwise: return (.top, 1 - spent, 1)
         case .spentFromBottom: return (.top, 0.5 - spent / 2, 0.5 + spent / 2)
         case .spentFromTop: return (.bottom, 0.5 - spent / 2, 0.5 + spent / 2)
-        case .leftClockwise: return (.top, spent, 1)
+        case .leftClockwise: return (.top, spent, span)
         case .leftCounterclockwise: return (.top, 0, left)
         case .leftToBottom: return (.top, 0.5 - left / 2, 0.5 + left / 2)
         case .leftToTop: return (.bottom, 0.5 - left / 2, 0.5 + left / 2)
@@ -333,6 +373,12 @@ enum OutlineStyle: String, CaseIterable, Identifiable {
         case (.left, .bottom): return .leftToBottom
         case (.left, .top): return .leftToTop
         }
+    }
+
+    /// The arc shown past the limit: the whole covered span, never more. For the time-left styles,
+    /// which are empty at the limit, the full span is shown so "over" stays visible.
+    func overStroke(span: Double = Settings.outlineSpan) -> (anchor: Anchor, start: Double, end: Double)? {
+        stroke(progress: isTimeLeft ? 0 : 1, span: span)
     }
 
     /// Migrates names from 0.9.0.

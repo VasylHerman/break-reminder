@@ -6,6 +6,8 @@ struct MenuBarPreview: View {
     let theme: Theme
     let style: OutlineStyle
     let counterStyle: CounterStyle
+    /// Share of the outline a whole block covers.
+    var span: Double = Settings.outlineSpan
     /// Weekly score to show as a heart, nil hides it.
     let score: Double?
     let blink: Bool
@@ -33,8 +35,11 @@ struct MenuBarPreview: View {
             let textColor = Color(nsColor: theme.textColor(for: phase))
             let outlineColor = Color(nsColor: theme.outlineColor(for: phase, highContrast: highContrast, glyph: counterStyle.isGlyph))
             let outlineWidth: CGFloat = highContrast ? 2 : 1
-            let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
-            let opacity = blinkOpacity(t: t, active: blink && !reduceMotion && (warning || over), fast: over)
+            let bpm: Double? = !blink ? nil : over ? Double(Settings.beatOverBPM)
+                : warning ? Double(Settings.beatNormalBPM) + (Double(Settings.beatWarningBPM) - Double(Settings.beatNormalBPM)) * (1 - minutesLeft / Double(max(warnBefore, 1)))
+                : (Settings.beatWhileWorking && !resting ? Double(Settings.beatNormalBPM) : nil)
+            let opacity = blinkOpacity(t: t, bpm: bpm)
+            let ringColor = Color(nsColor: theme.outlineColor(for: .working, highContrast: highContrast, glyph: true))
 
             HStack(spacing: 14) {
                 if let score, counterStyle != .heart {
@@ -49,7 +54,7 @@ struct MenuBarPreview: View {
                         .overlay {
                             if !resting {
                                 Outline(stroke: outlineStroke(progress: progress, over: over), circular: true)
-                                    .stroke(outlineColor, style: StrokeStyle(lineWidth: outlineWidth, lineCap: .round))
+                                    .stroke(ringColor, style: StrokeStyle(lineWidth: outlineWidth, lineCap: .round))
                             }
                         }
                         .opacity(opacity)
@@ -93,18 +98,24 @@ struct MenuBarPreview: View {
 
     private func outlineStroke(progress: Double, over: Bool) -> (anchor: OutlineStyle.Anchor, start: Double, end: Double)? {
         if style == .off || progress == 0 && !over { return nil }
-        if over { return (.top, 0, 1) }
-        return style.stroke(progress: progress)
+        if over { return style.overStroke(span: span) }
+        return style.stroke(progress: progress, span: span)
     }
 
-    /// Fade to 25% and back over 0.4 s, once per second in the warning and twice per second over the limit.
-    private func blinkOpacity(t: Double, active: Bool, fast: Bool) -> Double {
-        guard active else { return 1 }
-        let period = fast ? 0.5 : 1.0
-        let phase = t.truncatingRemainder(dividingBy: period)
-        guard phase < 0.4 else { return 1 }
-        let x = phase / 0.4                       // 0 -> 1 across the blink
-        return 1 - 0.75 * sin(x * .pi)            // dip to 0.25 at the middle
+    /// A heartbeat, lub-dub, at the given rate, matching the app's keyframes compressed to the period.
+    private func blinkOpacity(t: Double, bpm: Double?) -> Double {
+        guard let bpm, bpm > 0 else { return 1 }
+        let period = 60 / bpm
+        let scale = min(1, period * 0.85 / AppDelegate.beatTimes.last!)
+        let phase = t.truncatingRemainder(dividingBy: period) / scale
+        let times = AppDelegate.beatTimes, values = AppDelegate.beatValues
+        guard phase < times.last! else { return 1 }
+        for i in 1..<times.count where phase <= times[i] {
+            let x = (phase - times[i - 1]) / (times[i] - times[i - 1])
+            let eased = 0.5 - 0.5 * cos(x * .pi)
+            return values[i - 1] + (values[i] - values[i - 1]) * eased
+        }
+        return 1
     }
 }
 

@@ -24,10 +24,10 @@ final class ProgressBorder {
 
     /// `progress` is the block's share of the limit (may exceed 1); nil hides the border.
     func update(progress: Double?, style: OutlineStyle, color: NSColor) {
-        // Past the limit every style shows a closed outline, so "over" never looks like "almost".
+        // Past the limit the arc stays at the covered span, in red; the ring never closes.
         let stroke: (anchor: OutlineStyle.Anchor, start: Double, end: Double)?
         if let progress, progress >= 1, style != .off {
-            stroke = (.top, 0, 1)
+            stroke = style.overStroke()
         } else if let progress {
             stroke = style.stroke(progress: progress)
         } else {

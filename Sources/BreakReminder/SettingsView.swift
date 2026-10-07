@@ -78,6 +78,11 @@ struct AppearanceSettingsView: View {
     @AppStorage(Settings.Key.counterStyle) private var counterStyle = CounterStyle.heart.rawValue
     @AppStorage(Settings.Key.showScore) private var showScore = false
     @AppStorage(Settings.Key.warnBlink) private var warnBlink = true
+    @AppStorage(Settings.Key.outlineSpan) private var outlineSpan = 50
+    @AppStorage(Settings.Key.beatNormal) private var beatNormal = 10
+    @AppStorage(Settings.Key.beatWarning) private var beatWarning = 40
+    @AppStorage(Settings.Key.beatOver) private var beatOver = 80
+    @AppStorage(Settings.Key.beatWhileWorking) private var beatWhileWorking = false
     @State private var advancedExpanded = false
 
     private var currentCounter: CounterStyle { CounterStyle(rawValue: counterStyle) ?? .number }
@@ -92,6 +97,7 @@ struct AppearanceSettingsView: View {
                     theme: currentTheme,
                     style: currentStyle,
                     counterStyle: currentCounter,
+                    span: Double(outlineSpan) / 100,
                     score: showScore || currentCounter == .heart ? previewScore : nil,
                     blink: warnBlink,
                     workLimit: workLimit,
@@ -126,10 +132,20 @@ struct AppearanceSettingsView: View {
                         ForEach(OutlineStyle.Direction.allCases) { Text($0.label).tag($0) }
                     }
                     .disabled(currentStyle.mode == .off)
-                    Toggle("Blink during the warning", isOn: $warnBlink)
-                        .disabled(warnBefore == 0)
-                    Text("The blink follows the minutes left: every 5 seconds at 5 minutes, every second at 1 minute "
-                         + "and past the limit. It is off while Reduce Motion is on in System Settings.")
+                    StepperRow(label: "A whole block covers", value: "\(outlineSpan)% of the outline",
+                               number: $outlineSpan, range: 10...100, step: 5)
+                        .disabled(currentStyle.mode == .off)
+                    Toggle("Heartbeat", isOn: $warnBlink)
+                    StepperRow(label: "Normal rate", value: "\(beatNormal) bpm", number: $beatNormal, range: 5...200, step: 5)
+                        .disabled(!warnBlink)
+                    StepperRow(label: "Warning rate", value: "\(beatWarning) bpm", number: $beatWarning, range: 5...200, step: 5)
+                        .disabled(!warnBlink || warnBefore == 0)
+                    StepperRow(label: "Over the limit", value: "\(beatOver) bpm", number: $beatOver, range: 5...200, step: 5)
+                        .disabled(!warnBlink)
+                    Toggle("Beat while working, not only in the warning", isOn: $beatWhileWorking)
+                        .disabled(!warnBlink)
+                    Text("A lub-dub. In the warning the rate climbs from the normal rate to the warning rate as the "
+                         + "limit nears, then holds at the over rate. With Reduce Motion on it steps instead of fading.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -143,14 +159,14 @@ struct AppearanceSettingsView: View {
     private var caption: String {
         switch currentCounter {
         case .heart:
-            return "A gauge of this week's on-time share, like the battery icon. The outline rings it and carries "
-                + "the state: orange during the warning, red once you are over, gone while you rest."
+            return "A gauge of this week's on-time share, like the battery icon, with the arc showing the block. "
+                + "No colors: the blink carries the warning. The arc is gone while you rest."
         case .hidden:
             return "A dot in the state color, with the outline as a ring around it. The exact time is in the menu and the tooltip."
         default:
             return showScore
                 ? "The heart beside the minutes fills with this week's on-time share, shown once a break has been due."
-                : "The outline wraps the minutes and closes in red once the limit is reached."
+                : "The outline wraps the minutes and turns red once the limit is reached."
         }
     }
 

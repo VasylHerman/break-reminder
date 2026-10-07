@@ -7,18 +7,21 @@ and reminds you through Notification Center to take a break.
 - Rest starts after the input has been idle for 5 minutes (configurable). The work counter resets.
 - After 25 minutes of continuous work (configurable) a notification fires with a sound (Submarine by default), then repeats every 10 minutes until you rest.
 - The menu bar item is a heart by default, drawn as a gauge of the week's on-time share like the
-  battery icon. The outline rings it and carries the state: orange during the warning, red once you
-  are over, gone while you rest. The heart itself keeps the menu bar color. Settings can switch it to a dot, or to the minute counter
+  battery icon. The arc around it shows the block in the neutral tone; there are no state colors in this
+  mode, the blink carries the warning. The arc is gone while you rest. Settings can switch it to a dot, or to the minute counter
   (23, or 1:05 from an hour on, optionally with the unit) wrapped by the outline.
   The default theme is monochrome: the number stays in the menu bar color and the outline
   carries the state, red only once you are over. The Signal theme adds orange for the warning
   and green for rest; Accent uses your macOS accent color.
 - A thin outline around the counter shows the block's progress. By default it grows clockwise
-  from the top as time is spent. Settings offers time spent, time left or Off, with the
-  direction under Advanced. Past the limit the outline closes in red.
-- During the warning the counter blinks, and the pace follows the minutes left: every 5 seconds
-  at 5 minutes, every second at 1 minute and past the limit. Can be turned off in Settings, and
-  stays off while Reduce Motion is on. Increase Contrast thickens the outline.
+  from the top as time is spent, and a whole block covers half the outline (adjustable under
+  Advanced, or with `defaults write dev.vasyl.BreakReminder outlineSpanPercent -int 75`).
+  Settings offers time spent, time left or Off, with the direction under Advanced. Past the limit the arc stays at its covered share and turns red; it never closes into a full ring.
+- The item beats like a heart, a lub-dub at a configurable rate: during the warning it climbs
+  from the normal rate (10 bpm) to the warning rate (40), and holds at the over rate (80) past
+  the limit. Beating while working is optional. Rates are in Settings › Appearance › Advanced or
+  `defaults write dev.vasyl.BreakReminder beatWarningBPM -int 120`. With Reduce Motion on it
+  steps instead of fading. Increase Contrast thickens the outline.
 
 - Smart Pause holds reminders, sound and blink while the camera or microphone is in use, while
   the screen is shared (Zoom and macOS recording), or while a fullscreen app is in front (off by

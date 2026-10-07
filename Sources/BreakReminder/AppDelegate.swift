@@ -64,8 +64,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         RunLoop.main.add(timer, forMode: .common)
         self.timer = timer
 
-        // Blink scheduler: checks every second whether the warning effect is due.
-        let blinkTimer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in self?.blinkIfDue() }
+        // Heartbeat scheduler: checks ten times a second whether the next beat is due.
+        let blinkTimer = Timer(timeInterval: 0.1, repeats: true) { [weak self] _ in self?.blinkIfDue() }
         RunLoop.main.add(blinkTimer, forMode: .common)
         self.blinkTimer = blinkTimer
 
@@ -174,34 +174,59 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     // MARK: - Warning blink
 
-    /// Seconds between blinks: the number of minutes left before the limit (5m left -> every 5s),
-    /// 1s at and past the limit. Nil when no blink is due.
+    /// Seconds between beats from the heart rate for the current phase, nil when the heart is still.
+    /// In the warning the rate climbs from the normal rate to the warning rate as the limit nears.
     private func blinkPeriod(now: Date) -> TimeInterval? {
-        guard Settings.warnBlink, Settings.warnBefore > 0, Settings.firmness.allowsBlink,
-              !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion,
+        guard Settings.warnBlink, Settings.firmness.allowsBlink,
               let snapshot = lastSnapshot, snapshot.state == .working,
               !remindersHeld
         else { return nil }
         let elapsed = snapshot.currentSeconds + now.timeIntervalSince(snapshot.takenAt)
         let remaining = Settings.workLimit - elapsed
-        guard remaining <= Settings.warnBefore else { return nil }
-        return max(1, ceil(remaining / 60))
+        let bpm: Double
+        if remaining <= 0 {
+            bpm = Double(Settings.beatOverBPM)
+        } else if Settings.warnBefore > 0, remaining <= Settings.warnBefore {
+            let into = 1 - remaining / Settings.warnBefore       // 0 at the start of the warning, 1 at the limit
+            bpm = Double(Settings.beatNormalBPM) + (Double(Settings.beatWarningBPM) - Double(Settings.beatNormalBPM)) * into
+        } else if Settings.beatWhileWorking {
+            bpm = Double(Settings.beatNormalBPM)
+        } else {
+            return nil
+        }
+        return 60 / max(bpm, 1)
     }
 
     private func blinkIfDue() {
         let now = Date()
-        guard let period = blinkPeriod(now: now), now.timeIntervalSince(lastBlink) >= period - 0.1 else { return }
+        guard let period = blinkPeriod(now: now), now.timeIntervalSince(lastBlink) >= period - 0.05 else { return }
         lastBlink = now
         guard let button = statusItem.button else { return }
-        NSAnimationContext.runAnimationGroup({ context in
-            context.duration = 0.2
-            button.animator().alphaValue = 0.25
-        }, completionHandler: {
-            NSAnimationContext.runAnimationGroup { context in
-                context.duration = 0.2
-                button.animator().alphaValue = 1
+        Self.beat(button, period: period)
+    }
+
+    /// One heartbeat: a strong pulse, a lighter one, then rest. The keyframes span 0.55 s and are
+    /// compressed to fit faster rates. The outline layer is a sublayer, so it beats too.
+    static let beatTimes: [Double] = [0, 0.09, 0.18, 0.27, 0.36, 0.45, 0.55]
+    static let beatValues: [Double] = [1, 0.3, 1, 1, 0.55, 1, 1]
+
+    static func beat(_ button: NSStatusBarButton, period: TimeInterval) {
+        guard let layer = button.layer else { return }
+        let duration = min(beatTimes.last!, period * 0.85)
+        let scale = duration / beatTimes.last!
+        if NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
+            // Reduce Motion: the same rhythm as plain steps, no interpolation.
+            for (time, value) in zip(beatTimes, beatValues) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + time * scale) { button.alphaValue = CGFloat(value) }
             }
-        })
+            return
+        }
+        let animation = CAKeyframeAnimation(keyPath: "opacity")
+        animation.duration = duration
+        animation.keyTimes = beatTimes.map { NSNumber(value: $0 / beatTimes.last!) }
+        animation.values = beatValues
+        animation.timingFunctions = Array(repeating: CAMediaTimingFunction(name: .easeInEaseOut), count: beatValues.count - 1)
+        layer.add(animation, forKey: "beat")
     }
 
     // MARK: - Status bar
@@ -256,8 +281,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             button.image = ScoreHeart.canvas(fill: week.adherence ?? 0, color: .labelColor, canvas: 22)
             progressBorder?.ringDiameter = 21
             progressBorder?.glyphCanvas = 22
+            // The ring stays in the neutral tone in every state; the blink carries the warning.
             let progress: Double? = snapshot.state == .working ? snapshot.currentSeconds / Settings.workLimit : nil
-            progressBorder?.update(progress: progress, style: Settings.outlineStyle, color: borderColor)
+            let ringColor = theme.outlineColor(for: .working, highContrast: NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast, glyph: true)
+            progressBorder?.update(progress: progress, style: Settings.outlineStyle, color: ringColor)
             return
         } else if counterStyle == .hidden {
             // Dot in the state color, with the outline drawn as a ring around it.
