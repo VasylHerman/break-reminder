@@ -85,21 +85,24 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
                 .replacingOccurrences(of: "{minutes}", with: String(minutes))
                 .replacingOccurrences(of: "{rest}", with: String(Settings.restThresholdMinutes))
         }
-        let headline = fill(Settings.reminderTitle).trimmingCharacters(in: .whitespaces)
-        let title = headline.isEmpty ? Settings.defaultReminderTitle : headline
+        let prefix = fill(Settings.reminderTitle).trimmingCharacters(in: .whitespaces)
 
         if Settings.suggestsActivities,
            let activity = BreakActivities.pick(enabled: Settings.activityCategories, custom: Settings.customActivities,
                                                recent: Settings.recentActivities) {
             Settings.recentActivities = Settings.recentActivities + [activity.title]
+            // The activity is the headline; an optional prefix from Settings goes in front.
+            let headline = prefix.isEmpty ? activity.title : "\(prefix) · \(activity.title)"
             if repeated {
                 let over = max(0, minutes - Settings.workLimitMinutes)
-                let since = over > 0 ? "\(over) minutes over." : "Still here."
-                return (title: "\(title) · \(activity.title)", body: "\(since) \(activity.title), then back.")
+                let cue = over > 0 ? "\(over) min over" : "Still here"
+                return (title: "\(cue) · \(activity.title)", body: "\(activity.title), then back.")
             }
-            let body = activity.body.isEmpty ? "\(minutes) minutes in. Time for it." : activity.body
-            return (title: "\(title) · \(activity.title)", body: body)
+            var body = activity.body.isEmpty ? "\(minutes) minutes in. Time for it." : activity.body
+            if Settings.activityWhy, !activity.why.isEmpty { body += " " + activity.why }
+            return (title: headline, body: body)
         }
+        let title = prefix.isEmpty ? Settings.defaultReminderTitle : prefix
         return (title: title, body: fill(Settings.reminderBody).trimmingCharacters(in: .whitespaces))
     }
 

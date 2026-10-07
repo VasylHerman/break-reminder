@@ -6,9 +6,10 @@ and reminds you through Notification Center to take a break.
 - Work time is measured from system-wide keyboard, mouse and trackpad activity.
 - Rest starts after the input has been idle for 5 minutes (configurable). The work counter resets.
 - After 25 minutes of continuous work (configurable) a notification fires with a sound (Submarine by default), then repeats every 10 minutes until you rest.
-- Each reminder suggests one concrete activity, like "Drink some water" or "Look out the window",
-  picked from categories you can turn off (move, eyes, drink, air, breathe, people, enjoy) plus your own
-  lines such as medication. Never the same as the last two, outdoor ones only in daylight, coffee
+- Each reminder's headline is one concrete activity, like "Drink some water" or "Look out the window",
+  picked from categories you can turn off (move, eyes, drink, air, breathe, people, enjoy, home, mac)
+  plus your own lines such as medication. Each built-in one carries a one-line reason why it helps,
+  worded to what research supports, which can be turned off. Never the same as the last two, outdoor ones only in daylight, coffee
   not after 16:00, "Dance" only while a music app is playing. Repeats keep the activity and shorten the text. Or use your own title and message.
 - The menu bar item is a heart by default, drawn as a gauge of the week's on-time share like the
   battery icon. The arc around it shows the block in the neutral tone; there are no state colors in this

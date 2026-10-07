@@ -215,9 +215,10 @@ struct ReminderSettingsView: View {
     @AppStorage(Settings.Key.remindEvery) private var remindEvery = 10
     @AppStorage(Settings.Key.sound) private var sound = Settings.defaultSound
     @AppStorage(Settings.Key.workLimit) private var workLimit = 25
-    @AppStorage(Settings.Key.reminderTitle) private var title = Settings.defaultReminderTitle
+    @AppStorage(Settings.Key.reminderTitle) private var title = ""
     @AppStorage(Settings.Key.reminderBody) private var body_ = Settings.defaultReminderBody
     @AppStorage(Settings.Key.reminderStyle) private var reminderStyle = "activities"
+    @AppStorage(Settings.Key.activityWhy) private var activityWhy = true
     @State private var categories = Settings.activityCategories
     @State private var customLines = Settings.customActivities.joined(separator: "\n")
     @State private var example: (title: String, body: String)?
@@ -259,8 +260,8 @@ struct ReminderSettingsView: View {
                     Text("My own text").tag("custom")
                 }
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Title")
-                    TextField("", text: $title, prompt: Text(Settings.defaultReminderTitle))
+                    Text(reminderStyle == "custom" ? "Title" : "Prefix, optional")
+                    TextField("", text: $title, prompt: Text(reminderStyle == "custom" ? Settings.defaultReminderTitle : "For example Break, Pause, or ♥"))
                         .textFieldStyle(.roundedBorder)
                         .labelsHidden()
                 }
@@ -278,7 +279,7 @@ struct ReminderSettingsView: View {
                 } else {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Activities")
-                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], alignment: .leading, spacing: 4) {
+                        LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), alignment: .leading, spacing: 4) {
                             ForEach(BreakActivities.Category.allCases) { category in
                                 Toggle(category.label, isOn: Binding(
                                     get: { categories.contains(category) },
@@ -290,8 +291,9 @@ struct ReminderSettingsView: View {
                                 .toggleStyle(.checkbox)
                             }
                         }
-                        Text("One activity per reminder, never the same as the last two. Outdoor ones only in daylight, coffee not after 16:00. "
-                             + "Repeats keep the activity and shorten the text.")
+                        Toggle("Add the reason why it helps", isOn: $activityWhy)
+                        Text("One activity per reminder, never the same as the last two. Outdoor ones only in daylight, coffee not after 16:00, "
+                             + "Dance only while music plays. Repeats keep the activity and shorten the text.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -330,7 +332,7 @@ struct ReminderSettingsView: View {
                 .onChange(of: sound) { name in preview(name) }
                 HStack {
                     Button("Restore Default Text") {
-                        title = Settings.defaultReminderTitle
+                        title = ""
                         body_ = Settings.defaultReminderBody
                         categories = Set(BreakActivities.Category.allCases)
                         Settings.activityCategories = categories

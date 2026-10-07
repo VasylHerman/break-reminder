@@ -17,6 +17,7 @@ enum Settings {
         static let activityCategories = "activityCategories"
         static let customActivities = "customActivities"
         static let recentActivities = "recentActivities"
+        static let activityWhy = "activityWhy"
         static let warnBlink = "warnBlink"
         static let carryOverRest = "carryOverRest"
         static let carrySeconds = "carrySeconds"
@@ -63,11 +64,12 @@ enum Settings {
             Key.remindEvery: 10,
             Key.sound: defaultSound,
             Key.warnBefore: 5,
-            Key.reminderTitle: defaultReminderTitle,
+            Key.reminderTitle: "",
             Key.reminderBody: defaultReminderBody,
             Key.reminderStyle: "activities",
             Key.activityCategories: BreakActivities.Category.allCases.map(\.rawValue),
             Key.customActivities: [String](),
+            Key.activityWhy: true,
             Key.warnBlink: true,
             Key.carryOverRest: false,
             Key.beatNormal: 10,
@@ -96,7 +98,7 @@ enum Settings {
     static func resetAll() {
         for key in [Key.workLimit, Key.restThreshold, Key.remindEvery, Key.sound, Key.warnBefore,
                     Key.pausedUntil, Key.reminderTitle, Key.reminderBody, Key.reminderStyle,
-                    Key.activityCategories, Key.customActivities, Key.recentActivities, Key.warnBlink,
+                    Key.activityCategories, Key.customActivities, Key.recentActivities, Key.activityWhy, Key.warnBlink,
                     Key.carryOverRest, Key.carrySeconds,
                     Key.beatNormal, Key.beatWarning, Key.beatOver, Key.beatWhileWorking,
                     Key.beatBody, Key.beatLevel, Key.beatArc,
@@ -132,8 +134,9 @@ enum Settings {
         set { defaults.set(newValue, forKey: Key.warnBefore) }
     }
 
+    /// With activities this is an optional prefix before the activity; with own text it is the title.
     static var reminderTitle: String {
-        get { defaults.string(forKey: Key.reminderTitle) ?? defaultReminderTitle }
+        get { defaults.string(forKey: Key.reminderTitle) ?? "" }
         set { defaults.set(newValue, forKey: Key.reminderTitle) }
     }
 
@@ -156,6 +159,12 @@ enum Settings {
         get { defaults.stringArray(forKey: Key.customActivities) ?? [] }
         set { defaults.set(newValue, forKey: Key.customActivities) }
     }
+    /// Add the one-line reason after the activity.
+    static var activityWhy: Bool {
+        get { defaults.bool(forKey: Key.activityWhy) }
+        set { defaults.set(newValue, forKey: Key.activityWhy) }
+    }
+
     /// Titles of the last two activities, so the same one is not suggested twice in a row.
     static var recentActivities: [String] {
         get { defaults.stringArray(forKey: Key.recentActivities) ?? [] }
