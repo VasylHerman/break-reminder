@@ -3,3 +3,5 @@ dist/
 *.app
 .DS_Store
 .swiftpm/
+Support/AppIcon-preview.png
+Support/IconWork/

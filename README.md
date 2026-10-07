@@ -157,6 +157,8 @@ Sources/BreakReminder/
   SettingsWindowController.swift  hosts the form in an AppKit window
   Feedback.swift         GitHub links and prefilled issue forms
 Support/Info.plist       bundle metadata (LSUIElement hides the Dock icon)
+Support/Assets.car, AppIcon.icns  app icon (asset catalog for Notification Center, icns for Finder);
+                         regenerate with Support/make-icon.swift, needs Xcode's actool
 build.sh                 build, bundle, run, install
 ```
 

@@ -17,6 +17,8 @@ bundle() {
   mkdir -p "$BUNDLE/Contents/MacOS" "$BUNDLE/Contents/Resources"
   cp ".build/release/$APP" "$BUNDLE/Contents/MacOS/$APP"
   cp Support/Info.plist "$BUNDLE/Contents/Info.plist"
+  # App icon: the asset catalog is what Notification Center reads, the icns what Finder reads.
+  cp Support/Assets.car Support/AppIcon.icns "$BUNDLE/Contents/Resources/"
   # Ad-hoc signature: enough for Notification Center and launch-at-login on the local machine.
   codesign --force --sign - "$BUNDLE"
   echo "Bundle ready: $BUNDLE"

@@ -11,6 +11,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let notifier = Notifier.shared
     private var tracker: ActivityTracker!
     private var progressBorder: ProgressBorder?
+    private var appearanceObservation: NSKeyValueObservation?
     private var lastSnapshot: ActivityTracker.Snapshot?
     private lazy var settingsWindow = SettingsWindowController()
     private let history = History.shared
@@ -63,6 +64,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         statusItem.menu = buildMenu()
         if let button = statusItem.button {
             progressBorder = ProgressBorder(button: button)
+            // Redraw the moment the menu bar switches between light and dark, not at the next tick.
+            appearanceObservation = button.observe(\.effectiveAppearance) { [weak self] _, _ in
+                DispatchQueue.main.async {
+                    guard let self, let snapshot = self.lastSnapshot else { return }
+                    self.updateStatusItem(snapshot)
+                }
+            }
         }
 
         notifier.requestAuthorization()

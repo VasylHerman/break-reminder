@@ -388,6 +388,9 @@ struct AboutView: View {
 
     var body: some View {
         VStack(spacing: 16) {
+            Image(nsImage: NSApp.applicationIconImage)
+                .resizable()
+                .frame(width: 96, height: 96)
             VStack(spacing: 4) {
                 Text("Break Reminder").font(.title2).bold()
                 Text("\(Feedback.versionString) · \(Feedback.installMethod)")
