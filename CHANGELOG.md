@@ -3,6 +3,13 @@
 Release notes are taken from this file by the Release workflow: the section whose heading
 matches the tag becomes the GitHub release body.
 
+## 0.21.1
+
+### Fixed
+- Stats day headline: under a minute of focus no longer reads "Focused 0m, longest stretch 0m";
+  it says nothing was recorded yet. The longest stretch is only named when it is at least a minute
+  and shorter than the total.
+
 ## 0.21.0
 
 ### Changed
