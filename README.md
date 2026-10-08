@@ -44,7 +44,8 @@ and reminds you through Notification Center to take a break.
   not counted against you. History lives in `~/Library/Application Support/BreakReminder/history.json`:
   daily totals for 62 days and break events for 14 days, older data is dropped automatically.
 
-- Firmness. Gentle sends one reminder per block with no repeats and no blink; Normal repeats on
+- Firmness. Gentle sends one reminder per block with no repeats, and the heart keeps its calm beat
+  without the warning ramp or the fast beat over the limit; Normal repeats on
   your interval and blinks in the warning; Firm repeats every 5 minutes. Automatic, the default,
   earns calm from the last 7 days: 90% on time means Gentle, 40 to 89 Normal, 15 to 39 Firm.
   Below 15 the app steps down to Gentle and asks once, through a notification with Pause for

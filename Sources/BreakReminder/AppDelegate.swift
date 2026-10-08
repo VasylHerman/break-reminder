@@ -231,10 +231,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     /// Seconds between beats from the heart rate for the current phase, nil when the heart is still.
     /// In the warning the rate climbs from the normal rate to the warning rate as the limit nears.
     private func blinkPeriod(now: Date) -> TimeInterval? {
-        guard Settings.warnBlink, Settings.firmness.allowsBlink,
+        guard Settings.warnBlink,
               let snapshot = lastSnapshot,
               !remindersHeld
         else { return nil }
+        let calmOnly = !Settings.firmness.allowsWarningBeat
         let gauge = gauge(for: snapshot)
         if gauge.unwinding {
             // Resting with work still on the gauge: keep a calm beat until the arc is empty,
@@ -247,7 +248,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let elapsed = snapshot.currentSeconds + now.timeIntervalSince(snapshot.takenAt)
         let remaining = Settings.workLimit - elapsed
         let bpm: Double
-        if remaining <= 0 {
+        if calmOnly {
+            // Gentle: the ambient beat stays, the urgency does not.
+            guard Settings.beatWhileWorking else { return nil }
+            bpm = Double(Settings.beatNormalBPM)
+        } else if remaining <= 0 {
             bpm = Double(Settings.beatOverBPM)
         } else if Settings.warnBefore > 0, remaining <= Settings.warnBefore {
             let into = 1 - remaining / Settings.warnBefore       // 0 at the start of the warning, 1 at the limit

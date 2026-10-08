@@ -50,9 +50,11 @@ enum ScoreHeart {
             inner.draw(in: r, from: .zero, operation: .destinationOut, fraction: 1)
             return true
         }
+        // The fill runs over the level's own ink, not the symbol's padded box, so 83% leaves a visible gap.
+        let levelInk = inkBounds(of: level) ?? frame
         let levelMask = NSImage(size: size, flipped: false) { r in
-            let levelTop = r.minY + r.height * CGFloat(min(max(fill, 0), 1))
-            NSRect(x: r.minX, y: r.minY, width: r.width, height: levelTop - r.minY).clip()
+            let levelTop = levelInk.minY + levelInk.height * CGFloat(min(max(fill, 0), 1))
+            NSRect(x: r.minX, y: r.minY, width: r.width, height: max(0, levelTop - r.minY)).clip()
             level.draw(in: r)
             return true
         }

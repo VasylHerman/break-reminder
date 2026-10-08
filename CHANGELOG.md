@@ -3,6 +3,16 @@
 Release notes are taken from this file by the Release workflow: the section whose heading
 matches the tag becomes the GitHub release body.
 
+## Unreleased
+
+### Fixed
+- The heart's level was measured against the symbol's padded box, so any score above about 80% looked
+  full. It now fills the heart itself, so 83% leaves a visible gap at the top.
+
+### Changed
+- Gentle keeps the calm heartbeat. Earning Gentle used to stop the heart entirely, which looked like a
+  bug; now only the warning ramp and the fast over-limit beat are dropped, along with the repeats.
+
 ## 0.21.1
 
 ### Fixed

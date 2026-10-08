@@ -16,7 +16,7 @@ enum Firmness: String, CaseIterable, Identifiable {
 
     var summary: String {
         switch self {
-        case .gentle: return "One reminder per block, no repeats, no blink. The outline still shows where you are."
+        case .gentle: return "One reminder per block, no repeats. The heart keeps its calm beat but never speeds up."
         case .normal: return "Repeats on your interval, blinks in the warning."
         case .firm: return "Repeats every 5 minutes, blinks in the warning."
         }
@@ -31,7 +31,8 @@ enum Firmness: String, CaseIterable, Identifiable {
         }
     }
 
-    var allowsBlink: Bool { self != .gentle }
+    /// Gentle keeps the calm resting beat; only the warning ramp and the fast over-limit beat are its to lose.
+    var allowsWarningBeat: Bool { self != .gentle }
 }
 
 /// The user's choice: a fixed level, or automatic.
