@@ -89,10 +89,11 @@ enum Stats {
         timeFormatter.timeStyle = .short
         switch period {
         case .day:
-            guard summary.work > 0 || summary.due > 0 else { return "Nothing recorded yet today." }
+            // Under a minute of work is a touch of the keyboard, not a day: say nothing about it.
+            guard summary.work >= 60 || summary.due > 0 else { return "Nothing recorded yet today." }
             var text = "Focused \(TimeFormat.minutes(summary.work))"
             if summary.due > 0 { text += ", \(summary.taken) of \(summary.due) breaks taken" }
-            if summary.longestWork > 0 {
+            if summary.longestWork >= 60, summary.longestWork < summary.work {
                 text += ", longest stretch \(TimeFormat.minutes(summary.longestWork))"
                 if let longestStart { text += " at \(timeFormatter.string(from: longestStart))" }
             }
