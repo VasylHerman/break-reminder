@@ -3,7 +3,7 @@
 Release notes are taken from this file by the Release workflow: the section whose heading
 matches the tag becomes the GitHub release body.
 
-## Unreleased
+## 0.21.2
 
 ### Fixed
 - The heart's level was measured against the symbol's padded box, so any score above about 80% looked
