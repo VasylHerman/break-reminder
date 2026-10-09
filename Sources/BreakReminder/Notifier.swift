@@ -73,13 +73,14 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
     /// `sound` is a macOS alert sound name such as "Glass"; nil or empty means silent.
     /// The reminder shown after `minutes` of continuous work, also used for the test button.
     /// `repeated` is true for the second and later reminders of the same block, which get shorter text.
-    func sendBreakReminder(minutes: Int, repeated: Bool = false) {
-        let (title, body) = Self.reminderText(minutes: minutes, repeated: repeated)
+    /// `afterPause` marks the reminder a Smart Pause held: the headline says the call is over.
+    func sendBreakReminder(minutes: Int, repeated: Bool = false, afterPause: SmartPauseReason? = nil) {
+        let (title, body) = Self.reminderText(minutes: minutes, repeated: repeated, afterPause: afterPause)
         send(title: title, body: body, sound: Settings.notificationSound)
     }
 
     /// Title and body for a reminder: a suggested activity with an optional prefix in front.
-    static func reminderText(minutes: Int, repeated: Bool) -> (title: String, body: String) {
+    static func reminderText(minutes: Int, repeated: Bool, afterPause: SmartPauseReason? = nil) -> (title: String, body: String) {
         func fill(_ template: String) -> String {
             template
                 .replacingOccurrences(of: "{minutes}", with: String(minutes))
@@ -91,6 +92,11 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
             Settings.recentActivities = Settings.recentActivities + [activity.title]
             // The activity is the headline; an optional prefix from Settings goes in front.
             let headline = prefix.isEmpty ? activity.title : "\(prefix) · \(activity.title)"
+            if let afterPause {
+                var body = "The break waited for you. " + (activity.body.isEmpty ? "\(minutes) minutes in." : activity.body)
+                if Settings.activityWhy, !activity.why.isEmpty { body += " " + activity.why }
+                return (title: "\(afterPause.endedCue) · \(activity.title)", body: body)
+            }
             if repeated {
                 let over = max(0, minutes - Settings.workLimitMinutes)
                 let cue = over > 0 ? "\(over) min over" : "Still here"

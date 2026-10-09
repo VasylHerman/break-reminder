@@ -8,6 +8,15 @@ enum SmartPauseReason: String {
     case call = "camera or microphone in use"
     case screenShare = "screen sharing"
     case fullscreen = "fullscreen app in front"
+
+    /// Headline cue for the reminder that was held: "Call over · Walk a little".
+    var endedCue: String {
+        switch self {
+        case .call: return "Call over"
+        case .screenShare: return "Sharing over"
+        case .fullscreen: return "Back from full screen"
+        }
+    }
 }
 
 /// Detects situations in which a reminder would be unwelcome. Every check reads system state

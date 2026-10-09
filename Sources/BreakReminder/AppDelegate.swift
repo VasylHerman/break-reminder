@@ -19,6 +19,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var appliedSettings = Settings.signature
     private var smartPauseReason: SmartPauseReason?
     private var smartPauseEndedAt: Date?
+    /// A break that came due during a Smart Pause: delivered when the pause ends and the wait is over.
+    private var heldReminder: (reason: SmartPauseReason, dueAt: Date)?
+    /// Whether the arc was unwinding at the last tick, to catch the moment the rest is complete.
+    private var wasUnwinding = false
 
     private let stateLine = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private let lastWorkLine = NSMenuItem(title: "", action: nil, keyEquivalent: "")
@@ -139,6 +143,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         updateStatusItem(snapshot)
         recordDueIfNeeded(snapshot, now: now)
         remindIfNeeded(snapshot, now: now)
+        chimeIfRecovered(snapshot)
+    }
+
+    /// The optional chime when the rest a block deserved is complete: once per rest, only while away
+    /// (a real rest, not a pause between keystrokes), and never during a call or while paused.
+    private func chimeIfRecovered(_ snapshot: ActivityTracker.Snapshot) {
+        let gauge = gauge(for: snapshot)
+        defer { wasUnwinding = gauge.unwinding }
+        guard wasUnwinding, !gauge.unwinding, snapshot.state == .resting,
+              !Settings.recoveredSound.isEmpty, !remindersHeld
+        else { return }
+        NSSound(named: NSSound.Name(Settings.recoveredSound))?.play()
     }
 
     /// Once a day: earn the automatic level from the last 7 days, once at least 5 breaks were due.
@@ -178,10 +194,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func updateSmartPause(now: Date) {
         let reason = SmartPause.activeReason()
-        if smartPauseReason != nil, reason == nil {
+        if let ended = smartPauseReason, reason == nil {
             smartPauseEndedAt = now
+            // Over the limit when the pause ends: the held reminder goes out once the wait is over.
+            if let snapshot = lastSnapshot, snapshot.state == .working, snapshot.currentSeconds >= Settings.workLimit {
+                heldReminder = (ended, now.addingTimeInterval(Settings.smartPauseGrace))
+            }
         }
         smartPauseReason = reason
+    }
+
+    /// Delivers the reminder held by a Smart Pause: right away by default, regardless of the repeat
+    /// interval or the firmness level, since it is the block's reminder and not a repeat.
+    private func deliverHeldReminder(_ snapshot: ActivityTracker.Snapshot, now: Date) -> Bool {
+        guard let held = heldReminder else { return false }
+        if snapshot.state != .working || snapshot.currentSeconds < Settings.workLimit {
+            heldReminder = nil     // a rest started, or the timer was reset
+            return false
+        }
+        guard now >= held.dueAt, Settings.remindersPausedUntil == nil, smartPauseReason == nil else { return false }
+        heldReminder = nil
+        tracker.lastReminder = now
+        notifier.sendBreakReminder(minutes: Int(snapshot.currentSeconds / 60), afterPause: held.reason)
+        return true
     }
 
     /// Reminders and the blink are held while a Smart Pause is active and for the grace period after it.
@@ -192,6 +227,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func remindIfNeeded(_ snapshot: ActivityTracker.Snapshot, now: Date) {
+        if deliverHeldReminder(snapshot, now: now) { return }
         guard snapshot.state == .working, snapshot.currentSeconds >= Settings.workLimit else { return }
         if remindersHeld { return }
         let repeated = tracker.lastReminder != nil

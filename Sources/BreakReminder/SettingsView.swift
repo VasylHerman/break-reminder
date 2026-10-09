@@ -235,6 +235,7 @@ struct AppearanceSettingsView: View {
 struct ReminderSettingsView: View {
     @AppStorage(Settings.Key.remindEvery) private var remindEvery = 10
     @AppStorage(Settings.Key.sound) private var sound = Settings.defaultSound
+    @AppStorage(Settings.Key.recoveredSound) private var recoveredSound = Settings.defaultRecoveredSound
     @AppStorage(Settings.Key.workLimit) private var workLimit = 25
     @AppStorage(Settings.Key.reminderTitle) private var title = ""
     @AppStorage(Settings.Key.activityWhy) private var activityWhy = true
@@ -316,6 +317,18 @@ struct ReminderSettingsView: View {
                     }
                 }
                 .onChange(of: sound) { name in preview(name) }
+                Picker("When the rest is complete", selection: $recoveredSound) {
+                    Text("Silent").tag("")
+                    Divider()
+                    ForEach(Settings.availableSounds, id: \.self) { name in
+                        Text(name).tag(name)
+                    }
+                }
+                .onChange(of: recoveredSound) { name in preview(name) }
+                Text("A quiet chime once you have rested enough to go back. It plays only while you are away, "
+                     + "never during a call or while reminders are paused.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 HStack {
                     Button("Restore Default Text") {
                         title = ""
@@ -349,7 +362,7 @@ struct SmartPauseSettingsView: View {
     @AppStorage(Settings.Key.smartPauseCall) private var pauseCall = true
     @AppStorage(Settings.Key.smartPauseScreenShare) private var pauseShare = true
     @AppStorage(Settings.Key.smartPauseFullscreen) private var pauseFullscreen = false
-    @AppStorage(Settings.Key.smartPauseGrace) private var grace = 2
+    @AppStorage(Settings.Key.smartPauseGrace) private var grace = 0
     @State private var detected = SmartPause.detectAll()
 
     private let refresh = Timer.publish(every: 2, on: .main, in: .common).autoconnect()
@@ -384,10 +397,11 @@ struct SmartPauseSettingsView: View {
                     .foregroundStyle(.secondary)
             }
             Section("After a pause ends") {
-                StepperRow(label: "Wait before an overdue reminder", value: grace == 0 ? "No wait" : "\(grace) min",
+                StepperRow(label: "Wait before the held reminder", value: grace == 0 ? "Right away" : "\(grace) min",
                            number: $grace, range: 0...15)
-                Text("If you are over the limit when the pause ends, the reminder fires after this wait, "
-                     + "unless a rest has started by then.")
+                Text("A break that came due during the pause is delivered when the pause ends, as \"Call over · …\", "
+                     + "after this wait, unless a rest has started by then. It comes even at Gentle and whatever the "
+                     + "repeat interval, because it is the block's own reminder.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

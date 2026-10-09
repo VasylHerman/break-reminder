@@ -32,8 +32,9 @@ and reminds you through Notification Center to take a break.
 - Smart Pause holds reminders, sound and blink while the camera or microphone is in use, while
   the screen is shared (Zoom and macOS recording), or while a fullscreen app is in front (off by
   default). Each trigger is a toggle. Focus modes are not detected since macOS reveals them only
-  to apps with Full Disk Access. After a pause ends, an overdue
-  reminder waits a 2 minute grace period.
+  to apps with Full Disk Access. A break that comes due during the pause is delivered the moment
+  the pause ends, as "Call over · Walk a little", even at Gentle and whatever the repeat interval;
+  an optional wait of up to 15 minutes can delay it.
 
 - Stats, the first tab of the window (⌘S from the menu): a one-line headline, then today as a
   timeline of focus and rest with skipped breaks marked, the week as bars of focused time, or
@@ -127,7 +128,7 @@ The bundle is ad-hoc signed, which is enough for local use. Nothing is uploaded 
 | --- | --- |
 | General | Launch at login, on by default for an installed copy. Daily update check and automatic install while resting. Work limit, rest threshold and warn-before minutes as steppers |
 | Appearance | Live preview, theme (Quiet, Signal, Accent), show as (minutes with unit, minutes, dot, heart), outline mode, weekly score heart beside it, and under Advanced the outline direction and blink |
-| Reminders | Firmness (Automatic, Gentle, Normal, Firm), repeat interval, optional prefix for the title, suggested activities with category toggles and the reason why, sound picker that previews on change, Send Test Notification |
+| Reminders | Firmness (Automatic, Gentle, Normal, Firm), repeat interval, optional prefix for the title, suggested activities with category toggles and the reason why, sound picker that previews on change, a chime when the rest is complete (Bottle by default, can be silent), Send Test Notification |
 | Smart Pause | Master switch, the three triggers with a live "Now" indicator when detected, and the grace period |
 | About | Version, install method, feedback and project links, copy the Homebrew install command, Reset All Settings |
 

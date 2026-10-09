@@ -9,6 +9,7 @@ enum Settings {
         static let restThreshold = "restThresholdMinutes"
         static let remindEvery = "remindEveryMinutes"
         static let sound = "notificationSound"
+        static let recoveredSound = "recoveredSound"
         static let warnBefore = "warnBeforeMinutes"
         static let pausedUntil = "remindersPausedUntil"
         static let reminderTitle = "reminderTitle"
@@ -58,6 +59,8 @@ enum Settings {
         "Ping", "Pop", "Purr", "Sosumi", "Submarine", "Tink",
     ]
     static let defaultSound = "Submarine"
+    /// Distinct from the reminder sound: "rested enough to go back".
+    static let defaultRecoveredSound = "Bottle"
 
     static func registerDefaults() {
         defaults.register(defaults: [
@@ -65,6 +68,7 @@ enum Settings {
             Key.restThreshold: 5,
             Key.remindEvery: 10,
             Key.sound: defaultSound,
+            Key.recoveredSound: defaultRecoveredSound,
             Key.warnBefore: 5,
             Key.reminderTitle: "",
             Key.activityCategories: BreakActivities.Category.allCases.map(\.rawValue),
@@ -87,7 +91,7 @@ enum Settings {
             Key.smartPauseCall: true,
             Key.smartPauseScreenShare: true,
             Key.smartPauseFullscreen: false,
-            Key.smartPauseGrace: 2,
+            Key.smartPauseGrace: 0,
             Key.checkForUpdates: true,
             Key.autoInstallUpdates: true,
             Key.firmnessMode: FirmnessMode.automatic.rawValue,
@@ -97,7 +101,7 @@ enum Settings {
 
     /// Removes every user setting so the registered defaults apply again. Timer state is untouched.
     static func resetAll() {
-        for key in [Key.workLimit, Key.restThreshold, Key.remindEvery, Key.sound, Key.warnBefore,
+        for key in [Key.workLimit, Key.restThreshold, Key.remindEvery, Key.sound, Key.recoveredSound, Key.warnBefore,
                     Key.pausedUntil, Key.reminderTitle,
                     Key.activityCategories, Key.recentActivities, Key.activityWhy, Key.warnBlink,
                     Key.carryOverRest, Key.carrySeconds,
@@ -335,6 +339,11 @@ enum Settings {
     static var notificationSound: String {
         get { defaults.string(forKey: Key.sound) ?? defaultSound }
         set { defaults.set(newValue, forKey: Key.sound) }
+    }
+    /// Played once when the rest a block deserved is complete; empty for none.
+    static var recoveredSound: String {
+        get { defaults.string(forKey: Key.recoveredSound) ?? defaultRecoveredSound }
+        set { defaults.set(newValue, forKey: Key.recoveredSound) }
     }
 
     /// Cheap fingerprint of every user setting, used to detect real changes.

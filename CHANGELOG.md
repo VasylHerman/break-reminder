@@ -3,6 +3,19 @@
 Release notes are taken from this file by the Release workflow: the section whose heading
 matches the tag becomes the GitHub release body.
 
+## Unreleased
+
+### Added
+- A chime when the rest a block deserved is complete: Bottle by default, any alert sound or silent in
+  Reminders settings. It plays once per rest, only while you are away, never during a call or while
+  paused.
+
+### Changed
+- A break that comes due during a Smart Pause is delivered the moment the pause ends, with the
+  headline "Call over · …" (or "Sharing over", "Back from full screen"). It used to wait for the
+  grace period and then for the repeat interval, so after a call it came late or, at Gentle, never.
+  The wait is now 0 by default; the Smart Pause setting still allows up to 15 minutes.
+
 ## 0.21.2
 
 ### Fixed
