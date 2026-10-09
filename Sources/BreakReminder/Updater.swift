@@ -20,12 +20,19 @@ final class Updater {
     private let latestURL = URL(string: "https://api.github.com/repos/VasylHerman/break-reminder/releases/latest")!
     private let releasesPage = URL(string: "https://github.com/VasylHerman/break-reminder/releases/latest")!
     private var checking = false
+    private let launchedAt = Date()
+    /// In memory only: after a failed check the next try waits this long, not a whole day.
+    private var lastAttempt: Date?
+    private static let retryAfterFailure: TimeInterval = 15 * 60
 
     static var currentVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0"
     }
 
     static var installedWithHomebrew: Bool { Bundle.main.bundlePath.contains("/Cellar/") }
+
+    /// True when install() can run brew itself, so it is safe to call without a click.
+    static var canInstallAutomatically: Bool { installedWithHomebrew && brewPath != nil }
 
     static var brewPath: String? {
         ["/opt/homebrew/bin/brew", "/usr/local/bin/brew"].first { FileManager.default.isExecutableFile(atPath: $0) }
@@ -34,8 +41,13 @@ final class Updater {
     /// Daily check; the first one a minute after launch.
     func checkIfDue(force: Bool = false) {
         guard Settings.checkForUpdates || force, !checking else { return }
-        if !force, let last = Settings.lastUpdateCheck, Date().timeIntervalSince(last) < 24 * 3600 { return }
+        if !force {
+            if Date().timeIntervalSince(launchedAt) < 60 { return }
+            if let last = Settings.lastUpdateCheck, Date().timeIntervalSince(last) < 24 * 3600 { return }
+            if let attempt = lastAttempt, Date().timeIntervalSince(attempt) < Self.retryAfterFailure { return }
+        }
         checking = true
+        lastAttempt = Date()
         var request = URLRequest(url: latestURL)
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
         request.setValue("BreakReminder/\(Self.currentVersion)", forHTTPHeaderField: "User-Agent")
@@ -43,11 +55,12 @@ final class Updater {
             DispatchQueue.main.async {
                 guard let self else { return }
                 self.checking = false
-                Settings.lastUpdateCheck = Date()
+                // Only a real answer counts as a check; offline or rate limited, the next try is in minutes.
                 guard let data,
                       let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                       let tag = json["tag_name"] as? String
                 else { return }
+                Settings.lastUpdateCheck = Date()
                 let latest = tag.hasPrefix("v") ? String(tag.dropFirst()) : tag
                 Settings.latestKnownVersion = latest
                 if Self.isNewer(latest, than: Self.currentVersion), case .idle = self.state {

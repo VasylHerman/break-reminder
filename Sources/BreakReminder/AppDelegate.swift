@@ -23,6 +23,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var heldReminder: (reason: SmartPauseReason, dueAt: Date)?
     /// Whether the arc was unwinding at the last tick, to catch the moment the rest is complete.
     private var wasUnwinding = false
+    private var lastTickAt: Date?
 
     private let stateLine = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private let lastWorkLine = NSMenuItem(title: "", action: nil, keyEquivalent: "")
@@ -131,12 +132,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func tick() {
         let now = Date()
+        // A long gap between ticks means the Mac slept: do not read the jump as a finished rest.
+        if let last = lastTickAt, now.timeIntervalSince(last) > Self.pollInterval * 3 { wasUnwinding = false }
+        lastTickAt = now
         let snapshot = tracker.tick(now: now)
         lastSnapshot = snapshot
         updateSmartPause(now: now)
         evaluateFirmnessIfDue(now: now)
         Updater.shared.checkIfDue()
-        if Settings.autoInstallUpdates, snapshot.state == .resting, case .available = Updater.shared.state {
+        if Settings.autoInstallUpdates, Updater.canInstallAutomatically,
+           snapshot.state == .resting, case .available = Updater.shared.state {
             // Install while resting, never mid-block.
             Updater.shared.install()
         }
@@ -188,7 +193,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let blockStart = tracker.currentBlockStart
         if dueRecordedFor != blockStart {
             dueRecordedFor = blockStart
-            history.breakDue(at: now, held: smartPauseReason != nil)
+            history.breakDue(at: now, held: smartPauseReason != nil, blockStart: blockStart)
         }
     }
 
@@ -196,8 +201,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let reason = SmartPause.activeReason()
         if let ended = smartPauseReason, reason == nil {
             smartPauseEndedAt = now
-            // Over the limit when the pause ends: the held reminder goes out once the wait is over.
-            if let snapshot = lastSnapshot, snapshot.state == .working, snapshot.currentSeconds >= Settings.workLimit {
+            // Over the limit when the pause ends and no reminder went out in this block yet: the held
+            // reminder goes out once the wait is over. A block already reminded is not reminded again.
+            if let snapshot = lastSnapshot, snapshot.state == .working, snapshot.currentSeconds >= Settings.workLimit,
+               tracker.lastReminder == nil {
                 heldReminder = (ended, now.addingTimeInterval(Settings.smartPauseGrace))
             }
         }
@@ -212,9 +219,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             heldReminder = nil     // a rest started, or the timer was reset
             return false
         }
-        guard now >= held.dueAt, Settings.remindersPausedUntil == nil, smartPauseReason == nil else { return false }
+        if Settings.remindersPausedUntil != nil {
+            heldReminder = nil     // the user paused reminders themselves; do not revive the call cue later
+            return false
+        }
+        guard now >= held.dueAt, smartPauseReason == nil else { return false }
         heldReminder = nil
         tracker.lastReminder = now
+        // The break is due now: follow-up is judged from this reminder, not from the limit under the pause.
+        history.redue(blockStart: tracker.currentBlockStart, at: now)
         notifier.sendBreakReminder(minutes: Int(snapshot.currentSeconds / 60), afterPause: held.reason)
         return true
     }
