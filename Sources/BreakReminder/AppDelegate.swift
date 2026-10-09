@@ -425,7 +425,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             progressBorder?.glyphCanvas = 22
             // Rasterizing the heart is the costly part of a tick: redo it only when its look changes.
             let fill = week.adherence ?? 0
-            let heartKey = "\(Int((fill * 100).rounded()))|\(button.effectiveAppearance.name.rawValue)"
+            let heartKey = "\(Settings.heartLevelStyle.rawValue)|\(Int((fill * 100).rounded()))|\(button.effectiveAppearance.name.rawValue)"
             if heartKey != lastHeartKey {
                 lastHeartKey = heartKey
                 progressBorder?.setGlyph(

@@ -13,7 +13,6 @@ struct MenuBarPreview: View {
     let blink: Bool
     let workLimit: Int
     let warnBefore: Int
-
     private let blockDuration = 7.0   // seconds for 0 -> limit
     private let overDuration = 2.5    // seconds shown in the over-limit state
     private let restDuration = 2.5    // seconds shown resting
@@ -28,6 +27,13 @@ struct MenuBarPreview: View {
             let progress = resting
                 ? (1 + overDuration / blockDuration) * (1 - (t - blockDuration - overDuration) / restDuration)
                 : min(t / blockDuration, 1)
+            // The heart's level follows the arc through the block and starts with the chosen style and alternates with the other each loop,
+            // so both styles are seen in step with the arc. Without a heart there is nothing to demo.
+            let loop = Int(context.date.timeIntervalSince(start) / (blockDuration + overDuration + restDuration))
+            let demoing = score != nil
+            let chosen = Settings.heartLevelStyle
+            let heartStyle: HeartLevelStyle = loop % 2 == 0 ? chosen : (chosen == .rises ? .fades : .rises)
+            let heartScore: Double? = score == nil ? nil : min(max(progress, 0), 1)
             let minutesLeft = Double(workLimit) * (1 - progress)
             let warning = !over && warnBefore > 0 && minutesLeft <= Double(warnBefore)
             let elapsedSeconds = resting ? (t - blockDuration - overDuration) * 120
@@ -45,17 +51,17 @@ struct MenuBarPreview: View {
             let ringColor = Color(nsColor: theme.outlineColor(for: .working, highContrast: highContrast, glyph: true))
 
             HStack(spacing: 14) {
-                if let score, counterStyle != .heart {
-                    ScoreHeartView(fill: score, color: theme.textColor(for: phase))
+                if let score = heartScore, counterStyle != .heart {
+                    ScoreHeartView(fill: score, color: theme.textColor(for: phase), levelStyle: heartStyle)
                         .padding(.trailing, -9)
                         .opacity(opacity)
                 }
                 if counterStyle == .heart {
                     // The same centered canvases the menu bar uses; each part beats only if selected.
                     ZStack {
-                        Image(nsImage: ScoreHeart.canvas(fill: score ?? 0, color: .labelColor, canvas: 22, parts: .level) ?? NSImage())
+                        Image(nsImage: ScoreHeart.canvas(fill: heartScore ?? 0, color: .labelColor, canvas: 22, parts: .level, levelStyle: heartStyle) ?? NSImage())
                             .opacity(Settings.beatLevel ? opacity : 1)
-                        Image(nsImage: ScoreHeart.canvas(fill: score ?? 0, color: .labelColor, canvas: 22, parts: .body) ?? NSImage())
+                        Image(nsImage: ScoreHeart.canvas(fill: heartScore ?? 0, color: .labelColor, canvas: 22, parts: .body, levelStyle: heartStyle) ?? NSImage())
                             .opacity(Settings.beatBody ? opacity : 1)
                         Outline(stroke: outlineStroke(progress: progress, over: over), circular: true)
                             .stroke(ringColor, style: StrokeStyle(lineWidth: outlineWidth, lineCap: .round))
@@ -97,6 +103,14 @@ struct MenuBarPreview: View {
             .frame(maxWidth: .infinity, alignment: .trailing)
             .background(.bar, in: RoundedRectangle(cornerRadius: 6))
             .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.primary.opacity(0.1)))
+            .overlay(alignment: .leading) {
+                if demoing, let score = heartScore {
+                    Text("\(heartStyle.label) \(Int((score * 100).rounded()))%")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                        .padding(.leading, 12)
+                }
+            }
         }
     }
 
@@ -159,9 +173,11 @@ struct ScoreHeartView: View {
     var weight: NSFont.Weight = .regular
     var color: NSColor = .labelColor
     var outlineOpacity: CGFloat = ScoreHeart.outlineOpacity
+    var levelStyle: HeartLevelStyle = Settings.heartLevelStyle
 
     var body: some View {
-        if let image = ScoreHeart.image(fill: fill, color: color, pointSize: size, weight: weight, outlineOpacity: outlineOpacity) {
+        if let image = ScoreHeart.image(fill: fill, color: color, pointSize: size, weight: weight,
+                                        outlineOpacity: outlineOpacity, levelStyle: levelStyle) {
             Image(nsImage: image)
         }
     }

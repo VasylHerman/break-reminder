@@ -106,6 +106,7 @@ struct AppearanceSettingsView: View {
     @AppStorage(Settings.Key.outlineStyle) private var outlineStyle = OutlineStyle.spentFromBottom.rawValue
     @AppStorage(Settings.Key.counterStyle) private var counterStyle = CounterStyle.heart.rawValue
     @AppStorage(Settings.Key.showScore) private var showScore = false
+    @AppStorage(Settings.Key.heartLevelStyle) private var heartLevelStyle = HeartLevelStyle.rises.rawValue
     @AppStorage(Settings.Key.warnBlink) private var warnBlink = true
     @AppStorage(Settings.Key.outlineSpan) private var outlineSpan = 50
     @AppStorage(Settings.Key.beatNormal) private var beatNormal = 10
@@ -135,6 +136,7 @@ struct AppearanceSettingsView: View {
                     workLimit: workLimit,
                     warnBefore: warnBefore
                 )
+                .id(heartLevelStyle)     // choosing a style restarts the preview, so it begins with that style
             }
             Section("Theme") {
                 Picker("Theme", selection: $theme) {
@@ -155,6 +157,17 @@ struct AppearanceSettingsView: View {
                 }
                 if currentCounter != .heart {
                     Toggle("Weekly score heart beside it", isOn: $showScore)
+                }
+                if currentCounter == .heart || showScore {
+                    Picker("Heart level", selection: $heartLevelStyle) {
+                        ForEach(HeartLevelStyle.allCases) { Text($0.label).tag($0.rawValue) }
+                    }
+                    .pickerStyle(.segmented)
+                    Text(HeartLevelStyle(rawValue: heartLevelStyle) == .fades
+                         ? "The whole heart is filled; it is dark at a full score and fades to gray as the score drops."
+                         : "The level rises with the score, like the battery icon.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
                 Text(caption)
                     .font(.caption)

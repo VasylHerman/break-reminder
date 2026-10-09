@@ -31,6 +31,7 @@ enum Settings {
         static let showUnit = "showUnit"          // 0.9 to 0.10, migrated into counterStyle
         static let counterStyle = "counterStyle"
         static let showScore = "showScore"
+        static let heartLevelStyle = "heartLevelStyle"
         static let theme = "theme"
         static let smartPauseEnabled = "smartPauseEnabled"
         static let smartPauseCall = "smartPauseCall"
@@ -86,6 +87,7 @@ enum Settings {
             Key.outlineSpan: 50,
             Key.counterStyle: CounterStyle.heart.rawValue,
             Key.showScore: false,
+            Key.heartLevelStyle: HeartLevelStyle.rises.rawValue,
             Key.theme: Theme.quiet.rawValue,
             Key.smartPauseEnabled: true,
             Key.smartPauseCall: true,
@@ -107,7 +109,7 @@ enum Settings {
                     Key.carryOverRest, Key.carrySeconds,
                     Key.beatNormal, Key.beatWarning, Key.beatOver, Key.beatWhileWorking,
                     Key.beatBody, Key.beatLevel, Key.beatArc,
-                    Key.outlineStyle, Key.outlineSpan, Key.showUnit, Key.counterStyle, Key.showScore, Key.theme, Key.smartPauseEnabled, Key.smartPauseCall,
+                    Key.outlineStyle, Key.outlineSpan, Key.showUnit, Key.counterStyle, Key.showScore, Key.heartLevelStyle, Key.theme, Key.smartPauseEnabled, Key.smartPauseCall,
                     Key.smartPauseScreenShare, Key.smartPauseFullscreen, Key.smartPauseGrace,
                     Key.checkForUpdates, Key.autoInstallUpdates, Key.lastUpdateCheck, Key.latestKnownVersion,
                     Key.firmnessMode, Key.autoFirmness, Key.autoFirmnessDay, Key.autoSteppedDown,
@@ -272,6 +274,12 @@ enum Settings {
         set { defaults.set(newValue, forKey: Key.showScore) }
     }
 
+    /// How the heart's inner level shows the score.
+    static var heartLevelStyle: HeartLevelStyle {
+        get { HeartLevelStyle(rawValue: defaults.string(forKey: Key.heartLevelStyle) ?? "") ?? .rises }
+        set { defaults.set(newValue.rawValue, forKey: Key.heartLevelStyle) }
+    }
+
     /// What the menu bar item shows: the number with or without a unit, or only a dot.
     static var counterStyle: CounterStyle {
         get {
@@ -349,7 +357,7 @@ enum Settings {
 
     /// Cheap fingerprint of every user setting, used to detect real changes.
     static var signature: String {
-        "\(workLimitMinutes)|\(restThresholdMinutes)|\(warnBeforeMinutes)|\(remindEveryMinutes)|\(notificationSound)|\(beatNormalBPM)|\(beatWarningBPM)|\(beatOverBPM)|\(beatWhileWorking)|\(carryOverRest)|\(beatBody)|\(beatLevel)|\(beatArc)|\(outlineStyle.rawValue)|\(outlineSpanPercent)|\(counterStyle.rawValue)|\(showScore)|\(theme.rawValue)|\(firmnessMode.rawValue)"
+        "\(workLimitMinutes)|\(restThresholdMinutes)|\(warnBeforeMinutes)|\(remindEveryMinutes)|\(notificationSound)|\(beatNormalBPM)|\(beatWarningBPM)|\(beatOverBPM)|\(beatWhileWorking)|\(carryOverRest)|\(beatBody)|\(beatLevel)|\(beatArc)|\(outlineStyle.rawValue)|\(outlineSpanPercent)|\(counterStyle.rawValue)|\(showScore)|\(heartLevelStyle.rawValue)|\(theme.rawValue)|\(firmnessMode.rawValue)"
     }
 
     static var workLimit: TimeInterval { TimeInterval(workLimitMinutes * 60) }
@@ -483,6 +491,21 @@ enum OutlineStyle: String, CaseIterable, Identifiable {
         case "retreatToTop": self = .leftCounterclockwise
         case "shrinkToBottom": self = .leftToBottom
         default: self = OutlineStyle(rawValue: stored ?? "") ?? .spentFromBottom
+        }
+    }
+}
+
+/// How the heart's level shows the score.
+enum HeartLevelStyle: String, CaseIterable, Identifiable {
+    /// The level rises with the score, like the battery icon.
+    case rises
+    /// The level always fills the whole heart; the score sets its tone, dark when high, gray when low.
+    case fades
+    var id: String { rawValue }
+    var label: String {
+        switch self {
+        case .rises: return "Rises"
+        case .fades: return "Fades"
         }
     }
 }

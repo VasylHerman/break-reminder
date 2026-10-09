@@ -29,7 +29,8 @@ enum ScoreHeart {
     }
 
     static func image(fill: Double, color: NSColor, pointSize: CGFloat = pointSize, weight: NSFont.Weight = .regular,
-                      outlineOpacity: CGFloat = outlineOpacity, parts: Parts = .all) -> NSImage? {
+                      outlineOpacity: CGFloat = outlineOpacity, parts: Parts = .all,
+                      levelStyle: HeartLevelStyle = Settings.heartLevelStyle) -> NSImage? {
         let config = NSImage.SymbolConfiguration(pointSize: pointSize, weight: .regular)
         guard let solid = NSImage(systemSymbolName: "heart.fill", accessibilityDescription: nil)?.withSymbolConfiguration(config)
         else { return nil }
@@ -53,7 +54,9 @@ enum ScoreHeart {
         // The fill runs over the level's own ink, not the symbol's padded box, so 83% leaves a visible gap.
         let levelInk = inkBounds(of: level) ?? frame
         let levelMask = NSImage(size: size, flipped: false) { r in
-            let levelTop = levelInk.minY + levelInk.height * CGFloat(min(max(fill, 0), 1))
+            // Fading style: the level is always the whole heart and the tone carries the score.
+            let shown = levelStyle == .fades ? 1 : min(max(fill, 0), 1)
+            let levelTop = levelInk.minY + levelInk.height * CGFloat(shown)
             NSRect(x: r.minX, y: r.minY, width: r.width, height: max(0, levelTop - r.minY)).clip()
             level.draw(in: r)
             return true
@@ -62,7 +65,7 @@ enum ScoreHeart {
         let image = NSImage(size: size, flipped: false) { rect in
             let tintedLevel = NSImage(size: size, flipped: false) { r in
                 levelMask.draw(in: r)
-                color.withAlphaComponent(levelOpacity).set()
+                color.withAlphaComponent(levelAlpha(fill: fill, style: levelStyle)).set()
                 r.fill(using: .sourceIn)
                 return true
             }
@@ -78,6 +81,14 @@ enum ScoreHeart {
         }
         image.isTemplate = false
         return image
+    }
+
+    /// Opacity of the level: fixed when it rises, dark at a full score and fading to gray at none when it fades.
+    static let fadedLevelOpacity: CGFloat = 0.2
+    static func levelAlpha(fill: Double, style: HeartLevelStyle) -> CGFloat {
+        guard style == .fades else { return levelOpacity }
+        let score = CGFloat(min(max(fill, 0), 1))
+        return fadedLevelOpacity + (levelOpacity - fadedLevelOpacity) * score
     }
 
     /// The solid glyph shrunk inward by `radius` points on every side: the glyph minus its surroundings
@@ -99,9 +110,9 @@ enum ScoreHeart {
     static let menuBarWeight: NSFont.Weight = .regular
 
     static func canvas(fill: Double, color: NSColor, canvas: CGFloat, outlineOpacity: CGFloat = outlineOpacity,
-                       parts: Parts = .all) -> NSImage? {
+                       parts: Parts = .all, levelStyle: HeartLevelStyle = Settings.heartLevelStyle) -> NSImage? {
         guard let heart = image(fill: fill, color: color, pointSize: menuBarPointSize, weight: menuBarWeight,
-                                outlineOpacity: outlineOpacity, parts: parts),
+                                outlineOpacity: outlineOpacity, parts: parts, levelStyle: levelStyle),
               let whole = parts == .all ? heart : image(fill: 1, color: color, pointSize: menuBarPointSize, weight: menuBarWeight)
         else { return nil }
         // Center the whole glyph's ink, not its bounding box, so body and level canvases line up.

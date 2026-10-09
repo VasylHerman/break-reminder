@@ -63,3 +63,11 @@ final class LogicTests: XCTestCase {
         try? FileManager.default.removeItem(at: backup)
     }
 }
+
+final class HeartStyleTests: XCTestCase {
+    func testFadingLevelIsDarkAtFullScoreAndGrayAtNone() {
+        XCTAssertEqual(ScoreHeart.levelAlpha(fill: 1, style: .fades), ScoreHeart.levelOpacity, accuracy: 0.001)
+        XCTAssertEqual(ScoreHeart.levelAlpha(fill: 0, style: .fades), ScoreHeart.fadedLevelOpacity, accuracy: 0.001)
+        XCTAssertEqual(ScoreHeart.levelAlpha(fill: 0.3, style: .rises), ScoreHeart.levelOpacity, accuracy: 0.001)
+    }
+}
