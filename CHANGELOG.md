@@ -3,6 +3,18 @@
 Release notes are taken from this file by the Release workflow: the section whose heading
 matches the tag becomes the GitHub release body.
 
+## 0.23.0
+
+### Added
+- A "Heart level" choice in Appearance: Rises (the level climbs with the score, as before) or Fades
+  (the whole heart is filled, dark at a full score and fading to gray as it drops). The outline and
+  the arc are unchanged. The menu bar heart, the heart beside the counter and the Stats header all
+  follow it.
+
+### Changed
+- The Appearance preview moves the heart's level with the arc through each loop. It starts with the
+  chosen style and alternates with the other one, so both can be compared.
+
 ## 0.22.1
 
 ### Fixed
