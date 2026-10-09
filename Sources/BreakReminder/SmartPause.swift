@@ -96,6 +96,42 @@ enum SmartPause {
     /// True when an input device is running somewhere. A device that also plays audio (a headset) and
     /// is the default output counts only with a call app open and no music playing.
     static func microphoneInUse() -> Bool {
+        // macOS 14.2 and later say exactly which processes are recording, so a headset that merely
+        // plays audio is never mistaken for a call.
+        if #available(macOS 14.2, *), let recording = processRecordingInput() { return recording }
+        return deviceInputRunning()
+    }
+
+    /// True/false from the per-process audio list; nil when the list cannot be read.
+    @available(macOS 14.2, *)
+    private static func processRecordingInput() -> Bool? {
+        let system = AudioObjectID(kAudioObjectSystemObject)
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyProcessObjectList,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var size: UInt32 = 0
+        guard AudioObjectGetPropertyDataSize(system, &address, 0, nil, &size) == noErr else { return nil }
+        var processes = [AudioObjectID](repeating: 0, count: Int(size) / MemoryLayout<AudioObjectID>.size)
+        guard AudioObjectGetPropertyData(system, &address, 0, nil, &size, &processes) == noErr else { return nil }
+        for process in processes {
+            var runningAddress = AudioObjectPropertyAddress(
+                mSelector: kAudioProcessPropertyIsRunningInput,
+                mScope: kAudioObjectPropertyScopeGlobal,
+                mElement: kAudioObjectPropertyElementMain
+            )
+            var running: UInt32 = 0
+            var runningSize = UInt32(MemoryLayout<UInt32>.size)
+            if AudioObjectGetPropertyData(process, &runningAddress, 0, nil, &runningSize, &running) == noErr, running != 0 {
+                return true
+            }
+        }
+        return false
+    }
+
+    /// Before macOS 14.2: an input device running somewhere, with the headset rule above.
+    private static func deviceInputRunning() -> Bool {
         let system = AudioObjectID(kAudioObjectSystemObject)
         var address = AudioObjectPropertyAddress(
             mSelector: kAudioHardwarePropertyDevices,

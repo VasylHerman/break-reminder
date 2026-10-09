@@ -53,7 +53,7 @@ struct StatsView: View {
         .frame(width: 460)
         .onAppear(perform: reload)
         .onChange(of: period) { _ in hoverText = nil; reload() }
-        .onReceive(refresh) { _ in reload() }
+        .onReceive(refresh) { _ in if SettingsWindowController.isOpen { reload() } }
     }
 
     // MARK: Visuals

@@ -63,6 +63,8 @@ final class Updater {
                 Settings.lastUpdateCheck = Date()
                 let latest = tag.hasPrefix("v") ? String(tag.dropFirst()) : tag
                 Settings.latestKnownVersion = latest
+                // A failed install is tried again after the next daily check.
+                if case .failed = self.state { self.state = .idle }
                 if Self.isNewer(latest, than: Self.currentVersion), case .idle = self.state {
                     self.state = .available(latest)
                 }
@@ -94,16 +96,21 @@ final class Updater {
         env["HOMEBREW_NO_ENV_HINTS"] = "1"
         env["HOMEBREW_NO_INSTALL_CLEANUP"] = "1"
         task.environment = env
-        let output = Pipe()
+        // Output goes to a file, not a pipe: nobody reads a pipe while brew runs, and a full one blocks it.
+        let log = FileManager.default.temporaryDirectory.appendingPathComponent("break-reminder-upgrade-\(UUID().uuidString).log")
+        FileManager.default.createFile(atPath: log.path, contents: nil)
+        let output = try? FileHandle(forWritingTo: log)
         task.standardOutput = output
         task.standardError = output
         task.terminationHandler = { [weak self] process in
-            let text = String(data: output.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+            let text = (try? String(contentsOf: log, encoding: .utf8)) ?? ""
+            try? FileManager.default.removeItem(at: log)
             DispatchQueue.main.async {
                 guard let self else { return }
-                if process.terminationStatus == 0 || text.contains("already installed") {
+                // Exit 0 is not enough: brew also exits 0 when the tap is behind and nothing was upgraded.
+                if process.terminationStatus == 0, let installed = Self.installedVersion(), Self.isNewer(installed, than: Self.currentVersion) {
                     self.state = .installed(version)
-                    self.relaunch()
+                    self.relaunch(version: version)
                 } else {
                     NSLog("brew upgrade failed: \(text.suffix(400))")
                     self.state = .failed(version)
@@ -113,15 +120,25 @@ final class Updater {
         do { try task.run() } catch { state = .failed(version) }
     }
 
-    /// Start the new copy from the opt path, which Homebrew repoints at the new version; it takes over this one.
-    private func relaunch() {
-        let optApp = URL(fileURLWithPath: (Self.brewPath ?? "/opt/homebrew/bin/brew"))
+    /// The app Homebrew's opt path points at, which after an upgrade is the new version.
+    private static var optApp: URL {
+        URL(fileURLWithPath: brewPath ?? "/opt/homebrew/bin/brew")
             .deletingLastPathComponent().deletingLastPathComponent()
             .appendingPathComponent("opt/break-reminder/BreakReminder.app")
+    }
+
+    private static func installedVersion() -> String? {
+        Bundle(url: optApp)?.infoDictionary?["CFBundleShortVersionString"] as? String
+    }
+
+    /// Start the new copy from the opt path, which Homebrew repoints at the new version; it takes over this one.
+    private func relaunch(version: String) {
         let config = NSWorkspace.OpenConfiguration()
         config.createsNewApplicationInstance = true
-        NSWorkspace.shared.openApplication(at: optApp, configuration: config) { _, error in
-            if let error { NSLog("relaunch failed: \(error)") }
+        NSWorkspace.shared.openApplication(at: Self.optApp, configuration: config) { _, error in
+            guard let error else { return }
+            NSLog("relaunch failed: \(error)")
+            DispatchQueue.main.async { self.state = .failed(version) }
         }
     }
 

@@ -136,7 +136,8 @@ enum Settings {
 
     /// Minutes before the work limit at which the counter turns yellow. 0 disables the warning.
     static var warnBeforeMinutes: Int {
-        get { max(0, defaults.integer(forKey: Key.warnBefore)) }
+        // Never reaching the limit itself: a warning that opens at zero would leave no "working" phase.
+        get { min(max(0, defaults.integer(forKey: Key.warnBefore)), max(0, workLimitMinutes - 1)) }
         set { defaults.set(newValue, forKey: Key.warnBefore) }
     }
 

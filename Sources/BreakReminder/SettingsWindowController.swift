@@ -3,7 +3,10 @@ import SwiftUI
 
 /// Preferences-style window: icon tabs in the toolbar, each pane a SwiftUI view,
 /// and the window resizes to the selected pane. Stats is the first pane.
-final class SettingsWindowController: NSWindowController {
+final class SettingsWindowController: NSWindowController, NSWindowDelegate {
+    /// Panes refresh on timers only while the window is on screen; a closed window keeps its views alive.
+    private(set) static var isOpen = false
+
     enum Pane: Int {
         case stats, general, appearance, reminders, smartPause, about
     }
@@ -41,6 +44,7 @@ final class SettingsWindowController: NSWindowController {
         window.title = "General"
         window.subtitle = "Break Reminder"
         window.isReleasedWhenClosed = false
+        window.delegate = self
         window.center()
         self.window = window
     }
@@ -50,7 +54,12 @@ final class SettingsWindowController: NSWindowController {
         tabs.selectedTabViewItemIndex = pane.rawValue
         NSApp.activate(ignoringOtherApps: true)
         if window?.isVisible != true { window?.center() }
+        Self.isOpen = true
         showWindow(nil)
         window?.makeKeyAndOrderFront(nil)
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        Self.isOpen = false
     }
 }

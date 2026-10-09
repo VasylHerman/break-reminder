@@ -59,13 +59,24 @@ final class ActivityTracker {
     }
 
     private static let storageKey = "trackerState"
-    private let defaults = UserDefaults.standard
+    private let defaults: UserDefaults
+    private let idleProvider: () -> TimeInterval
+    /// When the last tick ran. A long gap means the Mac slept (the idle clock does not run in sleep).
+    private var lastTickAt: Date?
 
-    init(restThreshold: TimeInterval, pollInterval: TimeInterval, now: Date = Date()) {
+    init(
+        restThreshold: TimeInterval,
+        pollInterval: TimeInterval,
+        now: Date = Date(),
+        defaults: UserDefaults = .standard,
+        idle idleProvider: @escaping () -> TimeInterval = ActivityTracker.systemIdleSeconds
+    ) {
         self.restThreshold = restThreshold
         self.activeWindow = pollInterval * 2
+        self.defaults = defaults
+        self.idleProvider = idleProvider
 
-        let idle = Self.systemIdleSeconds()
+        let idle = idleProvider()
         self.stateStart = now.addingTimeInterval(-idle)
         self.state = idle >= restThreshold ? .resting : .working
 
@@ -113,8 +124,13 @@ final class ActivityTracker {
 
     /// Restart the current work block from now.
     func resetWork(now: Date = Date()) {
-        if state == .working {
+        switch state {
+        case .working:
             onBlockEnded?(.working, stateStart, now)
+        case .resting:
+            // A rest cut short by the reset still counts: it is history and it feeds the carry-over.
+            lastRestSeconds = max(0, now.timeIntervalSince(stateStart))
+            onBlockEnded?(.resting, stateStart, now)
         }
         state = .working
         stateStart = now
@@ -124,7 +140,18 @@ final class ActivityTracker {
 
     @discardableResult
     func tick(now: Date = Date()) -> Snapshot {
-        let idle = Self.systemIdleSeconds()
+        let idle = idleProvider()
+
+        // No tick for at least the rest threshold: the Mac slept or the app was suspended. The idle
+        // clock does not run meanwhile, so the gap is a rest that began at the last tick, not work.
+        if state == .working, let last = lastTickAt, now.timeIntervalSince(last) >= restThreshold {
+            lastWorkSeconds = max(0, last.timeIntervalSince(stateStart))
+            onBlockEnded?(.working, stateStart, last)
+            state = .resting
+            stateStart = last
+            lastReminder = nil
+        }
+        lastTickAt = now
 
         switch state {
         case .working:

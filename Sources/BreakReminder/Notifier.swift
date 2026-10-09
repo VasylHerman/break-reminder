@@ -70,6 +70,15 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
         }
     }
 
+    /// Calls back on the main queue with whether banners can be shown. Always true without a bundle.
+    func checkAuthorization(_ completion: @escaping (Bool) -> Void) {
+        guard hasBundle else { completion(true); return }
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            let allowed = settings.authorizationStatus != .denied
+            DispatchQueue.main.async { completion(allowed) }
+        }
+    }
+
     /// `sound` is a macOS alert sound name such as "Glass"; nil or empty means silent.
     /// The reminder shown after `minutes` of continuous work, also used for the test button.
     /// `repeated` is true for the second and later reminders of the same block, which get shorter text.

@@ -14,7 +14,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var appearanceObservation: NSKeyValueObservation?
     private var lastSnapshot: ActivityTracker.Snapshot?
     private lazy var settingsWindow = SettingsWindowController()
-    private let history = History.shared
+    /// Lazy so the file is read only after older copies have quit and saved theirs.
+    private lazy var history = History.shared
+    private var lastHeartKey: String?
     private var dueRecordedFor: Date?
     private var appliedSettings = Settings.signature
     private var smartPauseReason: SmartPauseReason?
@@ -33,6 +35,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let firmnessLine = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private let updateItem = NSMenuItem(title: "", action: #selector(installUpdate), keyEquivalent: "")
     private let resumeItem = NSMenuItem(title: "Resume Reminders", action: #selector(resumeReminders), keyEquivalent: "")
+    private let notificationsOffItem = NSMenuItem(
+        title: "Notifications are off, open System Settings…", action: #selector(openNotificationSettings), keyEquivalent: ""
+    )
     private let workLimitMenu = NSMenu()
     private let restThresholdMenu = NSMenu()
 
@@ -89,11 +94,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         // .common mode keeps the title updating while the menu is open.
         let timer = Timer(timeInterval: Self.pollInterval, repeats: true) { [weak self] _ in self?.tick() }
+        timer.tolerance = 1
         RunLoop.main.add(timer, forMode: .common)
         self.timer = timer
 
         // Heartbeat scheduler: checks ten times a second whether the next beat is due.
         let blinkTimer = Timer(timeInterval: 0.1, repeats: true) { [weak self] _ in self?.blinkIfDue() }
+        blinkTimer.tolerance = 0.03
         RunLoop.main.add(blinkTimer, forMode: .common)
         self.blinkTimer = blinkTimer
 
@@ -122,10 +129,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private static func takeOverOlderInstances() {
         guard let bundleID = Bundle.main.bundleIdentifier else { return }
         let me = ProcessInfo.processInfo.processIdentifier
-        for app in NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
-        where app.processIdentifier != me {
-            app.terminate()
+        let older = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
+            .filter { $0.processIdentifier != me }
+        older.forEach { $0.terminate() }
+        // Wait for them to quit: they save the history on the way out, and this copy reads it afterwards.
+        let deadline = Date().addingTimeInterval(4)
+        while older.contains(where: { !$0.isTerminated }), Date() < deadline {
+            RunLoop.current.run(until: Date().addingTimeInterval(0.1))
         }
+        older.filter { !$0.isTerminated }.forEach { $0.forceTerminate() }
     }
 
     // MARK: - Polling
@@ -411,15 +423,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             button.image = ScoreHeart.emptyCanvas(22)
             progressBorder?.ringDiameter = 21
             progressBorder?.glyphCanvas = 22
-            progressBorder?.setGlyph(
-                body: ScoreHeart.canvas(fill: week.adherence ?? 0, color: .labelColor, canvas: 22, parts: .body),
-                level: ScoreHeart.canvas(fill: week.adherence ?? 0, color: .labelColor, canvas: 22, parts: .level)
-            )
+            // Rasterizing the heart is the costly part of a tick: redo it only when its look changes.
+            let fill = week.adherence ?? 0
+            let heartKey = "\(Int((fill * 100).rounded()))|\(button.effectiveAppearance.name.rawValue)"
+            if heartKey != lastHeartKey {
+                lastHeartKey = heartKey
+                progressBorder?.setGlyph(
+                    body: ScoreHeart.canvas(fill: fill, color: .labelColor, canvas: 22, parts: .body),
+                    level: ScoreHeart.canvas(fill: fill, color: .labelColor, canvas: 22, parts: .level)
+                )
+            }
             // The ring stays in the neutral tone in every state; the blink carries the warning.
             let ringColor = theme.outlineColor(for: .working, highContrast: NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast, glyph: true)
             progressBorder?.update(progress: arcProgress(snapshot), style: Settings.outlineStyle, color: ringColor)
             return
         } else if counterStyle == .hidden {
+            lastHeartKey = nil
             // Dot in the state color, with the outline drawn as a ring around it.
             progressBorder?.setGlyph(body: nil, level: nil)
             button.attributedTitle = NSAttributedString(string: "")
@@ -429,6 +448,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                                         .withAlphaComponent(ScoreHeart.levelOpacity))
             button.image = heart.map { ScoreHeart.compose(heart: $0, with: dot) } ?? dot
         } else {
+            lastHeartKey = nil
             progressBorder?.setGlyph(body: nil, level: nil)
             button.image = heart
             button.attributedTitle = NSAttributedString(
@@ -483,6 +503,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             line.isEnabled = false
             menu.addItem(line)
         }
+        notificationsOffItem.isHidden = true
+        menu.addItem(notificationsOffItem)
         menu.addItem(.separator())
 
         menu.addItem(NSMenuItem(title: "Reset Work Timer", action: #selector(resetWork), keyEquivalent: "r"))
@@ -535,7 +557,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         feedbackMenu.addItem(NSMenuItem(title: "Report a Bug…", action: #selector(reportBug), keyEquivalent: ""))
         feedbackMenu.addItem(.separator())
         feedbackMenu.addItem(NSMenuItem(title: "Release Notes", action: #selector(openReleaseNotes), keyEquivalent: ""))
-        feedbackMenu.addItem(NSMenuItem(title: "Star on GitHub", action: #selector(openGitHub), keyEquivalent: ""))
         feedbackMenu.addItem(NSMenuItem(title: "Project on GitHub", action: #selector(openGitHub), keyEquivalent: ""))
         let feedbackItem = NSMenuItem(title: "Feedback", action: nil, keyEquivalent: "")
         feedbackItem.submenu = feedbackMenu
@@ -550,6 +571,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func menuWillOpen(_ menu: NSMenu) {
+        notifier.checkAuthorization { [weak self] allowed in self?.notificationsOffItem.isHidden = allowed }
         let snapshot = tracker.tick()
         lastSnapshot = snapshot
         let time = TimeFormat.minutes(snapshot.currentSeconds)
@@ -676,6 +698,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         Settings.remindersPausedUntil = nil
     }
 
+    @objc private func openNotificationSettings() {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension") {
+            NSWorkspace.shared.open(url)
+        }
+    }
     @objc private func openGitHub() { Feedback.openRepository() }
     @objc private func openReleaseNotes() { Feedback.openReleaseNotes() }
     @objc private func requestFeature() { Feedback.requestFeature() }

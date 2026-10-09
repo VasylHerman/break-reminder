@@ -8,6 +8,11 @@ let package = Package(
         .executableTarget(
             name: "BreakReminder",
             path: "Sources/BreakReminder"
-        )
+        ),
+        .testTarget(
+            name: "BreakReminderTests",
+            dependencies: ["BreakReminder"],
+            path: "Tests/BreakReminderTests"
+        ),
     ]
 )

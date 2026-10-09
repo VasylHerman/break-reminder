@@ -65,18 +65,26 @@ enum Stats {
         var work: TimeInterval { day.work }
     }
 
+    /// Seconds of the live block that fall inside an interval, so a block over midnight counts on both days.
+    private static func liveSeconds(_ live: ActivityTracker.Snapshot, in interval: DateInterval) -> TimeInterval {
+        let start = live.takenAt.addingTimeInterval(-live.currentSeconds)
+        return max(0, min(live.takenAt, interval.end).timeIntervalSince(max(start, interval.start)))
+    }
+
     static func dayRows(period: Period, history: History, live: ActivityTracker.Snapshot?, blockStart: Date?, now: Date = Date()) -> [DayRow] {
         let calendar = Calendar.current
         return history.days(in: interval(for: period, now: now)).map { date, day in
             var day = day
             let isToday = calendar.isDate(date, inSameDayAs: now)
-            if isToday, let live, let blockStart, calendar.isDate(blockStart, inSameDayAs: now) {
+            if isToday, let live {
+                let dayInterval = calendar.dateInterval(of: .day, for: date) ?? DateInterval(start: date, duration: 86_400)
+                let seconds = liveSeconds(live, in: dayInterval)
                 switch live.state {
                 case .working:
-                    day.work += live.currentSeconds
-                    day.longestWork = max(day.longestWork, live.currentSeconds)
+                    day.work += seconds
+                    day.longestWork = max(day.longestWork, seconds)
                 case .resting:
-                    day.rest += live.currentSeconds
+                    day.rest += seconds
                 }
             }
             return DayRow(date: date, day: day, isToday: isToday)
@@ -134,13 +142,14 @@ enum Stats {
             if day.work > 0 || day.due > 0 { summary.activeDays += 1 }
             if let adherence = day.adherence, adherence >= 0.75 { summary.goodDays += 1 }
         }
-        if let live, let blockStart, interval.contains(blockStart) {
+        if let live {
+            let seconds = liveSeconds(live, in: interval)
             switch live.state {
             case .working:
-                summary.work += live.currentSeconds
-                summary.longestWork = max(summary.longestWork, live.currentSeconds)
+                summary.work += seconds
+                summary.longestWork = max(summary.longestWork, seconds)
             case .resting:
-                summary.rest += live.currentSeconds
+                summary.rest += seconds
             }
         }
         summary.streak = history.streak(asOf: now)

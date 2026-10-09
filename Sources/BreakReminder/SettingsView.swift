@@ -38,6 +38,7 @@ struct GeneralSettingsView: View {
             Section {
                 Toggle("Launch at login", isOn: $launchAtLogin)
                     .onChange(of: launchAtLogin) { enabled in setLaunchAtLogin(enabled) }
+                    .onAppear { launchAtLogin = LoginItem.isEnabled }
                 Text("To also restart the app after a crash, run it as a Homebrew service instead: "
                      + "brew services start break-reminder.")
                     .font(.caption)
@@ -59,8 +60,9 @@ struct GeneralSettingsView: View {
             Section("Timer") {
                 StepperRow(label: "Work limit", value: "\(workLimit) min", number: $workLimit, range: 5...240, step: 5)
                 StepperRow(label: "Rest counts after idle", value: "\(restThreshold) min", number: $restThreshold, range: 1...60)
-                StepperRow(label: "Warn before limit", value: warnBefore == 0 ? "Off" : "\(warnBefore) min",
-                           number: $warnBefore, range: 0...60)
+                StepperRow(label: "Warn before limit",
+                           value: warnBefore == 0 ? "Off" : "\(min(warnBefore, max(0, workLimit - 1))) min",
+                           number: $warnBefore, range: 0...max(0, workLimit - 1))
                 Toggle("Carry unfinished rest into the next block", isOn: $carryOverRest)
                 Text("The counter turns orange when the warning starts and red once the limit is reached. "
                      + "Rest begins after the keyboard, mouse and trackpad have been idle for the rest threshold. "
@@ -85,6 +87,8 @@ struct GeneralSettingsView: View {
     }
 
     private func setLaunchAtLogin(_ enabled: Bool) {
+        // Setting the toggle back after a failure fires this again; nothing to do when it already matches.
+        guard enabled != LoginItem.isEnabled else { return }
         do {
             try LoginItem.set(enabled: enabled)
             launchAtLoginError = nil
@@ -349,6 +353,11 @@ struct ReminderSettingsView: View {
         .formStyle(.grouped)
         .scrollDisabled(true)
         .fixedSize(horizontal: false, vertical: true)
+        // "Reset All Settings" and the menu change these behind the pane's back.
+        .onReceive(NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)) { _ in
+            let stored = Settings.activityCategories
+            if stored != categories { categories = stored }
+        }
     }
 
     private func preview(_ name: String) {
@@ -410,7 +419,7 @@ struct SmartPauseSettingsView: View {
         .formStyle(.grouped)
         .scrollDisabled(true)
         .fixedSize(horizontal: false, vertical: true)
-        .onReceive(refresh) { _ in detected = SmartPause.detectAll() }
+        .onReceive(refresh) { _ in if SettingsWindowController.isOpen { detected = SmartPause.detectAll() } }
     }
 }
 

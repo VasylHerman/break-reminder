@@ -74,6 +74,7 @@ final class History {
         f.calendar = Calendar(identifier: .gregorian)
         f.locale = Locale(identifier: "en_US_POSIX")
         f.dateFormat = "yyyy-MM-dd"
+        f.timeZone = .autoupdatingCurrent     // a menu bar app runs for weeks; travel and DST must not stale it
         return f
     }()
 
@@ -86,22 +87,40 @@ final class History {
 
     // MARK: Recording
 
+    /// The part of [start, end] that falls on each calendar day, so a block over midnight is split.
+    private func daySegments(start: Date, end: Date) -> [(date: Date, seconds: TimeInterval)] {
+        let calendar = Calendar.current
+        var result: [(Date, TimeInterval)] = []
+        var cursor = start
+        while cursor < end {
+            let nextMidnight = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: cursor)) ?? end
+            let segmentEnd = min(end, nextMidnight)
+            result.append((cursor, segmentEnd.timeIntervalSince(cursor)))
+            cursor = segmentEnd
+        }
+        return result
+    }
+
     func recordWork(start: Date, end: Date) {
         let length = max(0, end.timeIntervalSince(start))
         guard length > 0 else { return }
-        var day = self.day(for: start)
-        day.work += length
-        day.longestWork = max(day.longestWork, length)
-        setDay(day, for: start)
+        for (date, seconds) in daySegments(start: start, end: end) {
+            var day = self.day(for: date)
+            day.work += seconds
+            day.longestWork = max(day.longestWork, seconds)
+            setDay(day, for: date)
+        }
         store.blocks.append(Block(kind: .working, start: start, end: end))
     }
 
     func recordRest(start: Date, end: Date) {
         let length = max(0, end.timeIntervalSince(start))
         guard length > 0 else { return }
-        var day = self.day(for: start)
-        day.rest += length
-        setDay(day, for: start)
+        for (date, seconds) in daySegments(start: start, end: end) {
+            var day = self.day(for: date)
+            day.rest += seconds
+            setDay(day, for: date)
+        }
         store.blocks.append(Block(kind: .resting, start: start, end: end))
     }
 
@@ -281,9 +300,15 @@ final class History {
         guard let data = try? Data(contentsOf: fileURL) else { return }
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
-        if let loaded = try? decoder.decode(Store.self, from: data) {
-            store = loaded
+        do {
+            store = try decoder.decode(Store.self, from: data)
             prune()
+        } catch {
+            // Keep the unreadable file: the next save would otherwise overwrite the only copy.
+            NSLog("history.json unreadable, kept as history.corrupt.json: \(error)")
+            let backup = fileURL.deletingLastPathComponent().appendingPathComponent("history.corrupt.json")
+            try? FileManager.default.removeItem(at: backup)
+            try? FileManager.default.copyItem(at: fileURL, to: backup)
         }
     }
 
