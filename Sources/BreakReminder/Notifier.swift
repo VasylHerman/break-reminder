@@ -107,7 +107,8 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
             return (title: headline, body: body)
         }
         // Every category off, or nothing fits right now: the plain reminder.
-        let title = prefix.isEmpty ? Settings.defaultReminderTitle : prefix
+        var title = prefix.isEmpty ? Settings.defaultReminderTitle : prefix
+        if let afterPause { title = "\(afterPause.endedCue) · \(title)" }
         return (title: title, body: fill(Settings.defaultReminderBody))
     }
 

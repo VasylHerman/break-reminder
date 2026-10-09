@@ -79,8 +79,22 @@ enum SmartPause {
 
     // MARK: Microphone
 
-    /// True when an input device is running somewhere. Devices that also play audio (headsets)
-    /// are skipped while they are the default output, so music alone does not count as a call.
+    /// Bundle ids of apps that hold calls. A headset is input and output in one device and macOS reports
+    /// it as running for playback too, so it counts as a call only while one of these is open and no
+    /// music app is playing. Calls in a browser tab are not seen this way; the camera still catches video.
+    private static let callApps: Set<String> = [
+        "us.zoom.xos", "com.microsoft.teams", "com.microsoft.teams2", "com.tinyspeck.slackmacgap",
+        "com.apple.FaceTime", "com.hnc.Discord", "com.skype.skype", "com.webex.meetingmanager", "Cisco-Systems.Spark",
+    ]
+
+    private static func callAppRunning() -> Bool {
+        NSWorkspace.shared.runningApplications.contains { app in
+            app.bundleIdentifier.map(callApps.contains) ?? false
+        }
+    }
+
+    /// True when an input device is running somewhere. A device that also plays audio (a headset) and
+    /// is the default output counts only with a call app open and no music playing.
     static func microphoneInUse() -> Bool {
         let system = AudioObjectID(kAudioObjectSystemObject)
         var address = AudioObjectPropertyAddress(
@@ -104,7 +118,8 @@ enum SmartPause {
 
         for device in devices {
             guard streamCount(device, scope: kAudioObjectPropertyScopeInput) > 0 else { continue }
-            if device == defaultOutput, streamCount(device, scope: kAudioObjectPropertyScopeOutput) > 0 { continue }
+            if device == defaultOutput, streamCount(device, scope: kAudioObjectPropertyScopeOutput) > 0,
+               !(callAppRunning() && !BreakActivities.musicPlaying()) { continue }
             var runningAddress = AudioObjectPropertyAddress(
                 mSelector: kAudioDevicePropertyDeviceIsRunningSomewhere,
                 mScope: kAudioObjectPropertyScopeGlobal,

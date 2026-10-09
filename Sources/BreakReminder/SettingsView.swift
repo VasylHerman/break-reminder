@@ -49,7 +49,7 @@ struct GeneralSettingsView: View {
             Section("Updates") {
                 Toggle("Check for updates daily", isOn: $checkForUpdates)
                 Toggle("Install updates automatically while resting", isOn: $autoInstallUpdates)
-                    .disabled(!checkForUpdates)
+                    .disabled(!checkForUpdates || !Updater.canInstallAutomatically)
                 Text(Updater.installedWithHomebrew
                      ? "Updates install through Homebrew in seconds and the app restarts in the same state. Installed: \(Updater.currentVersion). \(lastCheckText)"
                      : "This copy was not installed with Homebrew, so updates open the release page instead. Installed: \(Updater.currentVersion). \(lastCheckText)")

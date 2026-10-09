@@ -14,6 +14,8 @@ final class History {
         var held: Bool              // Smart Pause was holding the reminder when the limit was reached
         var outcome: Outcome
         var restAt: Date?
+        /// Start of the work block the event belongs to; nil in files written before 0.21.3.
+        var blockStart: Date? = nil
     }
 
     struct Day: Codable {
@@ -103,17 +105,50 @@ final class History {
         store.blocks.append(Block(kind: .resting, start: start, end: end))
     }
 
-    /// Two dues closer than this are the same block seen twice (a relaunch); the later one is dropped.
-    static let minimumDueGap: TimeInterval = 20 * 60
+    /// For events without a block start: two dues closer than this are the same block seen twice (a
+    /// relaunch). A real next block needs at least a work limit plus a rest, so short limits shrink it.
+    static var legacyDueGap: TimeInterval { min(20 * 60, Settings.workLimit + Settings.restThreshold) }
+
+    /// The same work block seen twice: equal block starts, or for older events a due too close to tell apart.
+    private func sameBlock(_ a: Event, _ b: Event) -> Bool {
+        if let x = a.blockStart, let y = b.blockStart {
+            return abs(x.timeIntervalSince(y)) < 2      // the file keeps whole seconds
+        }
+        return abs(a.dueAt.timeIntervalSince(b.dueAt)) < Self.legacyDueGap
+    }
 
     /// The work limit was reached. One event per work block, even across relaunches.
-    func breakDue(at date: Date, held: Bool) {
-        if let last = store.events.last, date.timeIntervalSince(last.dueAt) < Self.minimumDueGap { return }
-        store.events.append(Event(dueAt: date, held: held, outcome: .pending, restAt: nil))
+    func breakDue(at date: Date, held: Bool, blockStart: Date) {
+        let event = Event(dueAt: date, held: held, outcome: .pending, restAt: nil, blockStart: blockStart)
+        if let last = store.events.last, sameBlock(last, event) { return }
+        store.events.append(event)
         var day = self.day(for: date)
         day.due += 1
         setDay(day, for: date)
         scheduleSave()
+    }
+
+    /// A reminder held by a Smart Pause was delivered at `date`. The break is due from now: the held
+    /// event of this block is reopened with the delivery time, undoing a skip it may already have
+    /// received while the pause lasted, and no longer counts as held.
+    func redue(blockStart: Date, at date: Date) {
+        guard let index = store.events.lastIndex(where: { $0.held && $0.dueAt >= blockStart }) else { return }
+        let old = store.events[index]
+        var oldDay = day(for: old.dueAt)
+        oldDay.due = max(0, oldDay.due - 1)
+        switch old.outcome {
+        case .followed: oldDay.followed = max(0, oldDay.followed - 1)
+        case .late: oldDay.late = max(0, oldDay.late - 1)
+        case .skipped:
+            oldDay.skipped = max(0, oldDay.skipped - 1)
+            oldDay.heldSkipped = max(0, oldDay.heldSkipped - 1)
+        case .pending: break
+        }
+        setDay(oldDay, for: old.dueAt)
+        store.events[index] = Event(dueAt: date, held: false, outcome: .pending, restAt: nil, blockStart: old.blockStart)
+        var newDay = day(for: date)
+        newDay.due += 1
+        setDay(newDay, for: date)
     }
 
     /// A rest started; resolves every pending event by its own delay.
@@ -129,7 +164,7 @@ final class History {
     func repairDuplicates() {
         var kept: [Event] = []
         for event in store.events.sorted(by: { $0.dueAt < $1.dueAt }) {
-            if let last = kept.last, event.dueAt.timeIntervalSince(last.dueAt) < Self.minimumDueGap {
+            if let last = kept.last, sameBlock(last, event) {
                 // Same block: keep the better outcome.
                 let rank: [Outcome: Int] = [.followed: 3, .late: 2, .pending: 1, .skipped: 0]
                 if (rank[event.outcome] ?? 0) > (rank[last.outcome] ?? 0) { kept[kept.count - 1] = event }
