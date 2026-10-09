@@ -3,7 +3,7 @@
 Release notes are taken from this file by the Release workflow: the section whose heading
 matches the tag becomes the GitHub release body.
 
-## Unreleased
+## 0.22.0
 
 ### Added
 - A chime when the rest a block deserved is complete: Bottle by default, any alert sound or silent in
