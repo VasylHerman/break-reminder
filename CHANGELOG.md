@@ -3,6 +3,33 @@
 Release notes are taken from this file by the Release workflow: the section whose heading
 matches the tag becomes the GitHub release body.
 
+## 0.22.1
+
+### Fixed
+- Sleep no longer counts as work. A block open when the Mac slept used to carry on after wake, so
+  the counter jumped by hours, a reminder fired at once and history got a block of that length. The
+  gap now ends the block where it began and counts as a rest.
+- Smart Pause no longer mistakes a headset for a call. On macOS 14.2 and later the microphone check
+  asks which processes are recording, so playback on AirPods with Slack open no longer holds
+  reminders.
+- History is never silently lost: an unreadable file is kept as history.corrupt.json, and a new
+  copy waits for the old one to quit and save before it reads the file on update or relaunch.
+- A failed update no longer hangs or sticks. brew's output goes to a file instead of a pipe, success
+  needs the installed version to be newer, and a failed install is retried after the next check.
+- Reset Work Timer during a rest keeps that rest in history and in the carry-over.
+- A block over midnight is split between the two days, and the live block shows on both.
+- "Warn before limit" can no longer reach the limit, which left no working phase.
+- Settings panes: the activity checkboxes and Launch at login follow changes made elsewhere, and a
+  failed login-item change shows the real error.
+- The day boundary follows the current time zone after travel or a DST change.
+
+### Changed
+- Less energy: timers have tolerances, the heart is redrawn only when its look changes, and the
+  Settings and Stats panes stop refreshing once the window is closed.
+- The menu says when notifications are off in System Settings and opens them.
+- Removed the duplicate "Star on GitHub" item.
+- Added unit tests for the tracker, gauge, history and version comparison.
+
 ## 0.22.0
 
 ### Added
